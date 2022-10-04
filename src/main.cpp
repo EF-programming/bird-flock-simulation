@@ -1,9 +1,11 @@
 #include <iostream>
 #include <string>
-#define GLEW_STATIC 1   // This allows linking with Static Library on Windows, without DLL
-#include <GL/glew.h>    // Include GLEW - OpenGL Extension Wrangler
-#include <GLFW/glfw3.h> // GLFW provides a cross-platform interface for creating a graphical context, initializing OpenGL and binding inputs
-#include <glm.hpp>  // GLM is an optimized math library with syntax to similar to OpenGL Shading Language
+#define GLEW_STATIC 1
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
 #include "shader.h"
 #include "simulation_state.h"
 
@@ -34,7 +36,6 @@ int main(int argc, char* argv[])
 
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-  // Initialize GLEW
   glewExperimental = true; // Needed for core profile
   if (glewInit() != GLEW_OK) {
     std::cerr << "Failed to create GLEW" << std::endl;
@@ -97,18 +98,46 @@ int main(int argc, char* argv[])
 
   Shader triangle_shader = Shader("shaders/triangle_v.glsl", "shaders/triangle_f.glsl");
 
-  // Entering Main Loop
+  glm::vec3 bird_positions[] = {
+    glm::vec3(0.0f,  0.0f,  0.0f),
+    glm::vec3(2.0f,  5.0f, -15.0f),
+    glm::vec3(-1.5f, -2.2f, -2.5f),
+    glm::vec3(-3.8f, -2.0f, -12.3f),
+    glm::vec3(2.4f, -0.4f, -3.5f),
+    glm::vec3(-1.7f,  3.0f, -7.5f),
+    glm::vec3(1.3f, -2.0f, -2.5f),
+    glm::vec3(1.5f,  2.0f, -2.5f),
+    glm::vec3(1.5f,  0.2f, -1.5f),
+    glm::vec3(-1.3f,  1.0f, -1.5f)
+  };
+
   while (!glfwWindowShouldClose(window)) {
 
-    // wipe the drawing surface clear
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(triangle_shader.id);
+
     glBindVertexArray(vao);
-    // draw points 0-3 from the currently bound VAO with current in-use shader
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    // update other events like input handling 
-    glfwPollEvents();
-    // put the stuff we've been drawing onto the display
+
+    glm::mat4 view = glm::mat4(1.0f);
+    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+    glm::mat4 projection;
+    projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    triangle_shader.SetMatrix4fv("view", view);
+    triangle_shader.SetMatrix4fv("projection", projection);
+
+    for (unsigned int i = 0; i < 10; i++)
+    {
+      glm::mat4 model = glm::mat4(1.0f);
+      model = glm::translate(model, bird_positions[i]);
+      float angle = 20.0f * i;
+      model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+      triangle_shader.SetMatrix4fv("model", model);
+
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+
     glfwSwapBuffers(window);
+
+    glfwPollEvents();
   }
 }

@@ -41,5 +41,7 @@
     <None Include="v_basic.glsl">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shaders\triangle_f.glsl" />
+    <None Include="shaders\triangle_v.glsl" />
   </ItemGroup>
 </Project>
