@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <string>
 #define GLEW_STATIC 1
 #include <GL/glew.h>
@@ -11,6 +12,18 @@
 
 using glm::vec3;
 using glm::mat4;
+using std::stringstream;
+
+void DrawBird(Bird bird, Shader shader) {
+  mat4 model = mat4(1.0f);
+  model = glm::translate(model, bird.pos);
+  model = glm::rotate(model, atan2(bird.dir.y, bird.dir.x), vec3(0.0f, 0.0f, 1.0f));
+  //float angle = 20.0f * i;
+  //model = glm::rotate(model, glm::radians(angle), vec3(1.0f, 0.3f, 0.5f));
+  shader.SetMatrix4fv("model", model);
+
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+}
 
 int main(int argc, char* argv[])
 {
@@ -26,11 +39,17 @@ int main(int argc, char* argv[])
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 #endif
 
+  // Initialize random seed
+  srand((unsigned long)time(0));
+
   SimulationState state = SimulationState();
   state.CreateFlocks();
-  state.Simulate();
 
-  GLFWwindow* window = glfwCreateWindow(1024, 768, "Comp371 - Project", NULL, NULL);
+  // Enable multi-sampling (anti-aliasing)
+  glfwWindowHint(GLFW_SAMPLES, 16);
+  glEnable(GL_MULTISAMPLE);
+
+  GLFWwindow* window = glfwCreateWindow(1024, 768, "Bird Flock Simulation", NULL, NULL);
   if (window == NULL)
   {
     std::cerr << "Failed to create GLFW window" << std::endl;
@@ -50,9 +69,6 @@ int main(int argc, char* argv[])
 
   // Assign state to opengl window var to be able to retrieve it in glfw callbacks (to be able to access state in callback code)
   glfwSetWindowUserPointer(window, &state);
-
-  // Initialize random seed
-  srand((unsigned long)time(0));
 
   // Handle window resize events
   glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
@@ -84,9 +100,9 @@ int main(int argc, char* argv[])
   //glEnable(GL_CULL_FACE);
 
   float points[] = {
-     0.0f,  0.5f,  0.0f,
-     0.5f, -0.5f,  0.0f,
-    -0.5f, -0.5f,  0.0f
+     0.5f,  0.0f,  0.0f,
+     -0.25f, -0.25f,  0.0f,
+    -0.25f, 0.25f,  0.0f
   };
 
   GLuint vbo = 0;
@@ -101,7 +117,7 @@ int main(int argc, char* argv[])
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
-  Shader triangle_shader = Shader("shaders/triangle_v.glsl", "shaders/triangle_f.glsl");
+  Shader bird_shader = Shader("shaders/bird_v.glsl", "shaders/bird_f.glsl");
 
   vec3 bird_positions[] = {
     vec3(0.0f,  0.0f,  0.0f),
@@ -116,33 +132,47 @@ int main(int argc, char* argv[])
     vec3(-1.3f,  1.0f, -1.5f)
   };
 
+  float time_of_last_fps_update = 0;
+  int update_count = 0;
+
   while (!glfwWindowShouldClose(window)) {
+    float time = (float)glfwGetTime();
+    state.delta_time = time - state.last_frame_time;
+    state.last_frame_time = time;
+
+    state.Simulate();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(triangle_shader.id);
+    glUseProgram(bird_shader.id);
 
     glBindVertexArray(vao);
 
     mat4 view = mat4(1.0f);
-    view = glm::translate(view, vec3(0.0f, 0.0f, -3.0f));
+    view = glm::translate(view, vec3(0.0f, 0.0f, -70.0f));
     mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    triangle_shader.SetMatrix4fv("view", view);
-    triangle_shader.SetMatrix4fv("projection", projection);
+    projection = glm::perspective(glm::radians(60.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
+    bird_shader.SetMatrix4fv("view", view);
+    bird_shader.SetMatrix4fv("projection", projection);
 
-    for (unsigned int i = 0; i < 10; i++)
-    {
-      mat4 model = mat4(1.0f);
-      model = glm::translate(model, bird_positions[i]);
-      float angle = 20.0f * i;
-      model = glm::rotate(model, glm::radians(angle), vec3(1.0f, 0.3f, 0.5f));
-      triangle_shader.SetMatrix4fv("model", model);
-
-      glDrawArrays(GL_TRIANGLES, 0, 36);
+    for (int i = 0; i < state.num_of_flocks; ++i) {
+      for (int j = state.flocks[i].start_index; j < state.flocks[i].end_index; ++j)
+      {
+        DrawBird(state.birds[j], bird_shader);
+      }
     }
-
     glfwSwapBuffers(window);
 
     glfwPollEvents();
+
+    update_count += 1;
+    if (time - time_of_last_fps_update >= 1.0f) {
+      stringstream ss;
+      ss << "Bird Flock Simulation" << " " << "FPS: " << update_count;
+      glfwSetWindowTitle(window, ss.str().c_str());
+      update_count = 0;
+      time_of_last_fps_update = time;
+    }
   }
 }
+
+

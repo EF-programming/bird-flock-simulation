@@ -153,8 +153,8 @@
   <ItemGroup>
     <None Include="f_basic.glsl" />
     <None Include="shaders\f_color_plaincolor.glsl" />
-    <None Include="shaders\triangle_f.glsl" />
-    <None Include="shaders\triangle_v.glsl" />
+    <None Include="shaders\bird_f.glsl" />
+    <None Include="shaders\bird_v.glsl" />
     <None Include="shaders\v_color_plaincolor.glsl" />
     <None Include="v_basic.glsl" />
   </ItemGroup>

@@ -17,18 +17,29 @@ struct Flock {
 };
 
 struct SimulationState {
-  const static int min_flocks = 3;
+  static constexpr float world_size_x_start = -10.0f;
+  static constexpr float world_size_x_end = 10.0f;
+  static constexpr float world_size_y_start = -10.0f;
+  static constexpr float world_size_y_end = 10.0f;
+  static constexpr float world_size_z = 20.0f;
+  const static int min_flocks = 7;
   const static int max_flocks = 7;
-  const static int min_birds_in_flock = 10;
+  const static int min_birds_in_flock = 20;
   const static int max_birds_in_flock = 20;
+  const static int max_birds = max_flocks * max_birds_in_flock;
   float bird_mov_speed = 1.0f;
-  float bird_rot_speed = 55.0f;
-  float separation_dist = 2.0f;
-  float separation_force_coefficient = 1;
-  float flock_alignment_coefficient = 1;
-  float flock_cohesion_coefficient = 1;
+  float bird_rot_speed = 1.5f; // in rad per second
+  float separation_dist = 4.0f;
+  float separation_force_coefficient = 10.0f;
+  float flock_alignment_coefficient = 1.0f;
+  float flock_cohesion_coefficient = 0.7f;
+
   Flock flocks[max_flocks]{};
-  Bird birds[max_flocks * max_birds_in_flock]{};
+  Bird birds[max_birds]{};
+  int num_of_flocks;
+
+  float delta_time = 0;
+  float last_frame_time = 0;
 
   void CreateFlocks();
   int CreateBirds(int start_index);
@@ -36,5 +47,6 @@ struct SimulationState {
   void SimulateBirdPair(int index_a, int index_b);
   void SimulateFlock(int index);
   void Simulate();
+  void CalcFlockAvgs(int i);
 };
 
