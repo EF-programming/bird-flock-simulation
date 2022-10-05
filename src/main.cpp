@@ -9,6 +9,9 @@
 #include "shader.h"
 #include "simulation_state.h"
 
+using glm::vec3;
+using glm::mat4;
+
 int main(int argc, char* argv[])
 {
   glfwInit();
@@ -24,6 +27,8 @@ int main(int argc, char* argv[])
 #endif
 
   SimulationState state = SimulationState();
+  state.CreateFlocks();
+  state.Simulate();
 
   GLFWwindow* window = glfwCreateWindow(1024, 768, "Comp371 - Project", NULL, NULL);
   if (window == NULL)
@@ -98,17 +103,17 @@ int main(int argc, char* argv[])
 
   Shader triangle_shader = Shader("shaders/triangle_v.glsl", "shaders/triangle_f.glsl");
 
-  glm::vec3 bird_positions[] = {
-    glm::vec3(0.0f,  0.0f,  0.0f),
-    glm::vec3(2.0f,  5.0f, -15.0f),
-    glm::vec3(-1.5f, -2.2f, -2.5f),
-    glm::vec3(-3.8f, -2.0f, -12.3f),
-    glm::vec3(2.4f, -0.4f, -3.5f),
-    glm::vec3(-1.7f,  3.0f, -7.5f),
-    glm::vec3(1.3f, -2.0f, -2.5f),
-    glm::vec3(1.5f,  2.0f, -2.5f),
-    glm::vec3(1.5f,  0.2f, -1.5f),
-    glm::vec3(-1.3f,  1.0f, -1.5f)
+  vec3 bird_positions[] = {
+    vec3(0.0f,  0.0f,  0.0f),
+    vec3(2.0f,  5.0f, -15.0f),
+    vec3(-1.5f, -2.2f, -2.5f),
+    vec3(-3.8f, -2.0f, -12.3f),
+    vec3(2.4f, -0.4f, -3.5f),
+    vec3(-1.7f,  3.0f, -7.5f),
+    vec3(1.3f, -2.0f, -2.5f),
+    vec3(1.5f,  2.0f, -2.5f),
+    vec3(1.5f,  0.2f, -1.5f),
+    vec3(-1.3f,  1.0f, -1.5f)
   };
 
   while (!glfwWindowShouldClose(window)) {
@@ -118,19 +123,19 @@ int main(int argc, char* argv[])
 
     glBindVertexArray(vao);
 
-    glm::mat4 view = glm::mat4(1.0f);
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-    glm::mat4 projection;
+    mat4 view = mat4(1.0f);
+    view = glm::translate(view, vec3(0.0f, 0.0f, -3.0f));
+    mat4 projection;
     projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     triangle_shader.SetMatrix4fv("view", view);
     triangle_shader.SetMatrix4fv("projection", projection);
 
     for (unsigned int i = 0; i < 10; i++)
     {
-      glm::mat4 model = glm::mat4(1.0f);
+      mat4 model = mat4(1.0f);
       model = glm::translate(model, bird_positions[i]);
       float angle = 20.0f * i;
-      model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+      model = glm::rotate(model, glm::radians(angle), vec3(1.0f, 0.3f, 0.5f));
       triangle_shader.SetMatrix4fv("model", model);
 
       glDrawArrays(GL_TRIANGLES, 0, 36);
