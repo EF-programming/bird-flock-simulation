@@ -12,8 +12,8 @@ struct Bird {
 struct Flock {
   int start_index;
   int end_index; // exclusive
-  vec3 avgdir{0,0,0};
-  vec3 avgpos{0,0,0};
+  vec3 avgdir{ 0,0,0 };
+  vec3 avgpos{ 0,0,0 };
 };
 
 struct SimulationState {
@@ -23,6 +23,10 @@ struct SimulationState {
   const static int max_birds_in_flock = 20;
   float bird_mov_speed = 1.0f;
   float bird_rot_speed = 55.0f;
+  float separation_dist = 2.0f;
+  float separation_force_coefficient = 1;
+  float flock_alignment_coefficient = 1;
+  float flock_cohesion_coefficient = 1;
   Flock flocks[max_flocks]{};
   Bird birds[max_flocks * max_birds_in_flock]{};
 
