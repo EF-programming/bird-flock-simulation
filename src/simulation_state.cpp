@@ -40,24 +40,7 @@ void SimulationState::CalcFlockAvgs(int i) {
   int num_of_birds = flocks[i].end_index - flocks[i].start_index;
   dir = glm::normalize(dir / (float)num_of_birds);
   pos = pos / (float)num_of_birds;
-  //if (pos.x < world_size_x_start) {
-  //  dir = glm::normalize(dir + vec3(1, 0, 0));
-  //}
-  //else if (pos.x > world_size_x_end) {
-  //  dir = glm::normalize(dir + vec3(-1, 0, 0));
-  //}
-  //if (pos.y < world_size_y_start) {
-  //  dir = glm::normalize(dir + vec3(0, 1, 0));
-  //}
-  //else if (pos.y > world_size_y_end) {
-  //  dir = glm::normalize(dir + vec3(0, -1, 0));
-  //}
-  //if (pos.z < world_size_z_start) {
-  //  dir = glm::normalize(dir + vec3(0, 0, 1));
-  //}
-  //else if (pos.z > world_size_z_end) {
-  //  dir = glm::normalize(dir + vec3(0, 0, -1));
-  //}
+
   flocks[i].avgdir = dir;
   flocks[i].avgpos = pos;
 }
@@ -86,6 +69,24 @@ void SimulationState::SimulateFlock(int i) {
   }
 
   for (int j = flocks[i].start_index; j < flocks[i].end_index; ++j) {
+    if (birds[j].pos.x < world_size_x_start) {
+      birds[j].force += vec3(1, 0, 0);
+    }
+    else if (birds[j].pos.x > world_size_x_end) {
+      birds[j].force += vec3(-1, 0, 0);
+    }
+    if (birds[j].pos.y < world_size_y_start) {
+      birds[j].force += vec3(0, 1, 0);
+    }
+    else if (birds[j].pos.y > world_size_y_end) {
+      birds[j].force += vec3(0, -1, 0);
+    }
+    if (birds[j].pos.z < world_size_z_start) {
+      birds[j].force += vec3(0, 0, 1);
+    }
+    else if (birds[j].pos.z > world_size_z_end) {
+      birds[j].force += vec3(0, 0, -1);
+    }
     // rotate bird then move bird
     vec3 a = birds[j].dir;
     vec3 b = glm::normalize(birds[j].force);

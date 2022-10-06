@@ -55,6 +55,7 @@ int main(int argc, char* argv[])
     return -1;
   }
   glfwMakeContextCurrent(window);
+  glfwSwapInterval(0);
 
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
@@ -143,9 +144,9 @@ int main(int argc, char* argv[])
     glBindVertexArray(vao);
 
     mat4 view = mat4(1.0f);
-    view = glm::translate(view, vec3(0.0f, 0.0f, -90.0f));
+    view = glm::translate(view, vec3(0.0f, 0.0f, -100.0f));
     mat4 projection;
-    projection = glm::perspective(glm::radians(60.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
     bird_shader.SetMatrix4fv("view", view);
     bird_shader.SetMatrix4fv("projection", projection);
 
