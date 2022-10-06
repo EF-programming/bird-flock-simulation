@@ -18,8 +18,6 @@ void DrawBird(Bird bird, Shader shader) {
   mat4 model = mat4(1.0f);
   model = glm::translate(model, bird.pos);
   model = glm::rotate(model, atan2(bird.dir.y, bird.dir.x), vec3(0.0f, 0.0f, 1.0f));
-  //float angle = 20.0f * i;
-  //model = glm::rotate(model, glm::radians(angle), vec3(1.0f, 0.3f, 0.5f));
   shader.SetMatrix4fv("model", model);
 
   glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -119,17 +117,14 @@ int main(int argc, char* argv[])
 
   Shader bird_shader = Shader("shaders/bird_v.glsl", "shaders/bird_f.glsl");
 
-  vec3 bird_positions[] = {
-    vec3(0.0f,  0.0f,  0.0f),
-    vec3(2.0f,  5.0f, -15.0f),
-    vec3(-1.5f, -2.2f, -2.5f),
-    vec3(-3.8f, -2.0f, -12.3f),
-    vec3(2.4f, -0.4f, -3.5f),
-    vec3(-1.7f,  3.0f, -7.5f),
-    vec3(1.3f, -2.0f, -2.5f),
-    vec3(1.5f,  2.0f, -2.5f),
-    vec3(1.5f,  0.2f, -1.5f),
-    vec3(-1.3f,  1.0f, -1.5f)
+  vec3 flock_colors[] = {
+    vec3(0.901961f, 0.623529f, 0.0f),
+    vec3(0.337255f, 0.705882f, 0.913725f),
+    vec3(0.0f, 0.619608f, 0.45098f),
+    vec3(0.941176f, 0.894118f, 0.258824f),
+    vec3(0.0f, 0.447059f, 0.698039f),
+    vec3(0.835294f, 0.368627f, 0.0f),
+    vec3(0.8f, 0.47451f, 0.654902f),
   };
 
   float time_of_last_fps_update = 0;
@@ -148,13 +143,14 @@ int main(int argc, char* argv[])
     glBindVertexArray(vao);
 
     mat4 view = mat4(1.0f);
-    view = glm::translate(view, vec3(0.0f, 0.0f, -70.0f));
+    view = glm::translate(view, vec3(0.0f, 0.0f, -90.0f));
     mat4 projection;
     projection = glm::perspective(glm::radians(60.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
     bird_shader.SetMatrix4fv("view", view);
     bird_shader.SetMatrix4fv("projection", projection);
 
     for (int i = 0; i < state.num_of_flocks; ++i) {
+      bird_shader.Set3fv("color", flock_colors[i]);
       for (int j = state.flocks[i].start_index; j < state.flocks[i].end_index; ++j)
       {
         DrawBird(state.birds[j], bird_shader);

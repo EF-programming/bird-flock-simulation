@@ -22,7 +22,7 @@ int SimulationState::CreateBirds(int start_index) {
     Bird b{};
     float pos_x = (rand() / (float)RAND_MAX) * (world_size_x_end - world_size_x_start) + world_size_x_start;
     float pos_y = (rand() / (float)RAND_MAX) * (world_size_y_end - world_size_y_start) + world_size_y_start;
-    float pos_z = (rand() / (float)RAND_MAX) * world_size_z;
+    float pos_z = (rand() / (float)RAND_MAX) * (world_size_z_end - world_size_z_start) + world_size_z_start;
     b.pos = vec3{ pos_x, pos_y, pos_z };
     b.dir = glm::normalize(b.pos); // Just so birds don't have the same initial direction.
     birds[i] = b;
@@ -38,8 +38,28 @@ void SimulationState::CalcFlockAvgs(int i) {
     pos += birds[j].pos;
   }
   int num_of_birds = flocks[i].end_index - flocks[i].start_index;
-  flocks[i].avgdir = glm::normalize(dir / (float)num_of_birds);
-  flocks[i].avgpos = pos / (float)num_of_birds;
+  dir = glm::normalize(dir / (float)num_of_birds);
+  pos = pos / (float)num_of_birds;
+  //if (pos.x < world_size_x_start) {
+  //  dir = glm::normalize(dir + vec3(1, 0, 0));
+  //}
+  //else if (pos.x > world_size_x_end) {
+  //  dir = glm::normalize(dir + vec3(-1, 0, 0));
+  //}
+  //if (pos.y < world_size_y_start) {
+  //  dir = glm::normalize(dir + vec3(0, 1, 0));
+  //}
+  //else if (pos.y > world_size_y_end) {
+  //  dir = glm::normalize(dir + vec3(0, -1, 0));
+  //}
+  //if (pos.z < world_size_z_start) {
+  //  dir = glm::normalize(dir + vec3(0, 0, 1));
+  //}
+  //else if (pos.z > world_size_z_end) {
+  //  dir = glm::normalize(dir + vec3(0, 0, -1));
+  //}
+  flocks[i].avgdir = dir;
+  flocks[i].avgpos = pos;
 }
 
 void SimulationState::SimulateBirdPair(int a, int b) {
