@@ -2,6 +2,9 @@
 #include <array>
 #include <string>
 #include <iostream>
+#include <thread>
+
+using std::thread;
 
 void SimulationState::CreateFlocks() {
   num_of_flocks = rand() % (max_flocks - min_flocks + 1) + min_flocks;
@@ -12,6 +15,14 @@ void SimulationState::CreateFlocks() {
     int num_of_birds = CreateBirds(flocks[i].start_index);
     flocks[i].end_index = flocks[i].start_index + num_of_birds;
     CalcFlockAvgs(i);
+    threads[i] = thread([this, i] {
+      while (simulation_active) {
+        if (flock_update_requests[i]) {
+          SimulateFlock(i);
+          flock_update_requests[i] = false;
+        }
+      }
+    });
   }
 }
 
@@ -101,7 +112,24 @@ void SimulationState::SimulateFlock(int i) {
 }
 
 void SimulationState::Simulate() {
-  for (int i = 0; i < max_flocks; ++i) {
-    SimulateFlock(i);
+  
+  for (int i = 0; i < num_of_flocks; ++i) {
+    flock_update_requests[i] = true;
+  }
+  bool all_updated = false;
+  while (!all_updated) {
+    all_updated = true;
+    for (int i = 0; i < num_of_flocks; ++i) {
+      if (flock_update_requests[i]) {
+        all_updated = false;
+      }
+    }
+  }
+}
+
+void SimulationState::StopSim() {
+  simulation_active = false;
+  for (int i = 0; i < num_of_flocks; ++i) {
+    threads[i].join();
   }
 }

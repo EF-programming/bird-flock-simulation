@@ -1,7 +1,9 @@
 #pragma once
 #include <glm.hpp>
+#include <thread>
 
 using glm::vec3;
+using std::thread;
 
 struct Bird {
   vec3 pos;
@@ -31,7 +33,7 @@ struct SimulationState {
   float bird_mov_speed = 2.0f;
   float bird_rot_speed = 0.4f; // in rad per second
   float separation_dist = 4.0f;
-  float separation_force_coefficient = 1.0f;
+  float separation_force_coefficient = 2.0f;
   float flock_alignment_coefficient = 0.5f;
   float flock_cohesion_coefficient = 0.5f;
 
@@ -39,11 +41,16 @@ struct SimulationState {
   Bird birds[max_birds]{};
   int num_of_flocks;
 
+  thread threads[max_flocks]{};
+  bool flock_update_requests[max_flocks]{};
+
   float delta_time = 0;
   float last_frame_time = 0;
 
   void CreateFlocks();
   int CreateBirds(int start_index);
+  bool simulation_active = true;
+  void StopSim();
 
   void SimulateBirdPair(int index_a, int index_b);
   void SimulateFlock(int index);

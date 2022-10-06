@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
     mat4 view = mat4(1.0f);
     view = glm::translate(view, vec3(0.0f, 0.0f, -100.0f));
     mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 115.0f);
     bird_shader.SetMatrix4fv("view", view);
     bird_shader.SetMatrix4fv("projection", projection);
 
@@ -170,6 +170,8 @@ int main(int argc, char* argv[])
       time_of_last_fps_update = time;
     }
   }
+
+  state.StopSim();
 }
 
 
