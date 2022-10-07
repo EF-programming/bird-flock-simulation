@@ -27,12 +27,10 @@
     <ClInclude Include="src\simulation_state.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="libs\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\f_color_plaincolor.glsl">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="shaders\v_color_plaincolor.glsl">
+    <None Include="shaders\grid_f.glsl">
       <Filter>shaders</Filter>
     </None>
     <None Include="f_basic.glsl">
@@ -43,5 +41,6 @@
     </None>
     <None Include="shaders\bird_f.glsl" />
     <None Include="shaders\bird_v.glsl" />
+    <None Include="shaders\grid_v.glsl" />
   </ItemGroup>
 </Project>

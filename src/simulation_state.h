@@ -23,7 +23,7 @@ struct SimulationState {
   static constexpr float world_size_x_end = 30.0f;
   static constexpr float world_size_y_start = -30.0f;
   static constexpr float world_size_y_end = 30.0f;
-  static constexpr float world_size_z_start = 5.0f;
+  static constexpr float world_size_z_start = 20.0f;
   static constexpr float world_size_z_end = 35.0f;
   const static int min_flocks = 3;
   const static int max_flocks = 7;

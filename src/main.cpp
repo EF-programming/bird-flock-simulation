@@ -7,12 +7,32 @@
 #include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h" // For loading textures
 #include "shader.h"
 #include "simulation_state.h"
 
 using glm::vec3;
 using glm::mat4;
 using std::stringstream;
+
+// Load a texture from a file. Texture loading code from https://learnopengl.com/Getting-started/Textures
+GLuint LoadTextureAlpha(string filename) {
+  int texture_width;
+  int texture_height;
+  int texture_num_channels;
+  unsigned char* data = stbi_load(filename.c_str(), &texture_width, &texture_height, &texture_num_channels, STBI_rgb_alpha);
+  GLuint texture;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width, texture_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+  glGenerateMipmap(GL_TEXTURE_2D);
+  stbi_image_free(data);
+  return texture;
+};
 
 void DrawBird(Bird bird, Shader shader) {
   mat4 model = mat4(1.0f);
@@ -97,27 +117,55 @@ int main(int argc, char* argv[])
   glEnable(GL_DEPTH_TEST);
   // Don't draw non-visible faces
   //glEnable(GL_CULL_FACE);
+  glEnable(GL_BLEND);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO); // Use basic transparency blending proportional to alpha
 
-  float points[] = {
+  float triangle_points[] = {
      0.5f,  0.0f,  0.0f,
      -0.25f, -0.25f,  0.0f,
     -0.25f, 0.25f,  0.0f
   };
 
-  GLuint vbo = 0;
-  glGenBuffers(1, &vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), points, GL_STATIC_DRAW);
+  GLuint triangle_vbo = 0;
+  glGenBuffers(1, &triangle_vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, triangle_vbo);
+  glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), triangle_points, GL_STATIC_DRAW);
 
-  GLuint vao = 0;
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
+  GLuint triangle_vao = 0;
+  glGenVertexArrays(1, &triangle_vao);
+  glBindVertexArray(triangle_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, triangle_vbo);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
   glEnableVertexAttribArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+  float grid_points[] = {
+     70.0f,  70.0f, 0.0f, 10.0f, 10.0f,  // top right
+     70.0f, -70.0f, 0.0f, 10.0f, 0.0f, // bottom right
+    -70.0f,  70.0f, 0.0f, 0.0f, 10.0f, // top left 
+
+     70.0f, -70.0f, 0.0f, 10.0f, 0.0f, // bottom right
+    -70.0f, -70.0f, 0.0f, 0.0f, 0.0f, // bottom left
+    -70.0f,  70.0f, 0.0f, 0.0f, 10.0f  // top left
+  };
+
+  GLuint grid_vbo = 0;
+  glGenBuffers(1, &grid_vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, grid_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(grid_points), grid_points, GL_STATIC_DRAW);
+
+  GLuint grid_vao = 0;
+  glGenVertexArrays(1, &grid_vao);
+  glBindVertexArray(grid_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, grid_vbo);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));
+  glEnableVertexAttribArray(1);
+
+  GLuint texture_grid = LoadTextureAlpha("textures/grid3.png");
 
   Shader bird_shader = Shader("shaders/bird_v.glsl", "shaders/bird_f.glsl");
-
+  Shader grid_shader = Shader("shaders/grid_v.glsl", "shaders/grid_f.glsl");
   vec3 flock_colors[] = {
     vec3(0.901961f, 0.623529f, 0.0f),
     vec3(0.337255f, 0.705882f, 0.913725f),
@@ -138,15 +186,25 @@ int main(int argc, char* argv[])
 
     state.Simulate();
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(bird_shader.id);
-
-    glBindVertexArray(vao);
-
     mat4 view = mat4(1.0f);
-    view = glm::translate(view, vec3(0.0f, 0.0f, -100.0f));
+    view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
     mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 115.0f);
+    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 170.0f);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Draw grid
+    glBindTexture(GL_TEXTURE_2D, texture_grid);
+    glBindVertexArray(grid_vao);
+    glUseProgram(grid_shader.id);
+    grid_shader.SetMatrix4fv("model", mat4(1.0f));
+    grid_shader.SetMatrix4fv("view", view);
+    grid_shader.SetMatrix4fv("projection", projection);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // Draw birds
+    glBindVertexArray(triangle_vao);
+    glUseProgram(bird_shader.id);
     bird_shader.SetMatrix4fv("view", view);
     bird_shader.SetMatrix4fv("projection", projection);
 

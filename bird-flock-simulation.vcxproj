@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)/libs/glm;$(SolutionDir)libs/glfw-3.3/include;$(SolutionDir)libs/glew-2.1.0/include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/libs;$(SolutionDir)/libs/glm;$(SolutionDir)libs/glfw-3.3/include;$(SolutionDir)libs/glew-2.1.0/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,15 +147,16 @@
     <ClCompile Include="src\shader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="libs\stb_image.h" />
     <ClInclude Include="src\shader.h" />
     <ClInclude Include="src\simulation_state.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="f_basic.glsl" />
-    <None Include="shaders\f_color_plaincolor.glsl" />
+    <None Include="shaders\grid_f.glsl" />
     <None Include="shaders\bird_f.glsl" />
     <None Include="shaders\bird_v.glsl" />
-    <None Include="shaders\v_color_plaincolor.glsl" />
+    <None Include="shaders\grid_v.glsl" />
     <None Include="v_basic.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
