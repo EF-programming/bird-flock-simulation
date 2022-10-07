@@ -8,6 +8,9 @@
     <Filter Include="shaders">
       <UniqueIdentifier>{4120993d-3f35-4d57-b5e4-881ac15735bb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="libs">
+      <UniqueIdentifier>{b557cad1-1717-4f74-9244-bd32811e891a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -27,14 +30,22 @@
     <ClInclude Include="src\simulation_state.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="libs\stb_image.h" />
+    <ClInclude Include="libs\stb_image.h">
+      <Filter>libs</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\grid_f.glsl">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\bird_f.glsl" />
-    <None Include="shaders\bird_v.glsl" />
-    <None Include="shaders\grid_v.glsl" />
+    <None Include="shaders\bird_f.glsl">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\bird_v.glsl">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\grid_v.glsl">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
