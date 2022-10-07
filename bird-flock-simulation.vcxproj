@@ -152,12 +152,10 @@
     <ClInclude Include="src\simulation_state.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="f_basic.glsl" />
     <None Include="shaders\grid_f.glsl" />
     <None Include="shaders\bird_f.glsl" />
     <None Include="shaders\bird_v.glsl" />
     <None Include="shaders\grid_v.glsl" />
-    <None Include="v_basic.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

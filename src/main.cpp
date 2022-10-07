@@ -162,10 +162,11 @@ int main(int argc, char* argv[])
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3* sizeof(float)));
   glEnableVertexAttribArray(1);
 
-  GLuint texture_grid = LoadTextureAlpha("textures/grid3.png");
+  GLuint texture_grid = LoadTextureAlpha("textures/grid.png");
 
   Shader bird_shader = Shader("shaders/bird_v.glsl", "shaders/bird_f.glsl");
   Shader grid_shader = Shader("shaders/grid_v.glsl", "shaders/grid_f.glsl");
+
   vec3 flock_colors[] = {
     vec3(0.901961f, 0.623529f, 0.0f),
     vec3(0.337255f, 0.705882f, 0.913725f),

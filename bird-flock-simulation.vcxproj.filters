@@ -33,12 +33,6 @@
     <None Include="shaders\grid_f.glsl">
       <Filter>shaders</Filter>
     </None>
-    <None Include="f_basic.glsl">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="v_basic.glsl">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="shaders\bird_f.glsl" />
     <None Include="shaders\bird_v.glsl" />
     <None Include="shaders\grid_v.glsl" />

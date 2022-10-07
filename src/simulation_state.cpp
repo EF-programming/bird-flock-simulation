@@ -1,5 +1,4 @@
 #include "simulation_state.h"
-#include <array>
 #include <string>
 #include <iostream>
 #include <thread>
@@ -103,7 +102,6 @@ void SimulationState::SimulateFlock(int i) {
     vec3 b = glm::normalize(birds[j].force);
     vec3 ninety = glm::normalize((glm::cross(glm::cross(a, b), a)));
     birds[j].dir = (float)cos(bird_rot_speed * delta_time) * a + (float)sin(bird_rot_speed * delta_time) * ninety;
-    //std::cout << birds[0].dir.x << " " << birds[0].dir.y << " " << birds[0].dir.z << std::endl;
     birds[j].pos += birds[j].dir * bird_mov_speed * delta_time;
     birds[j].force = vec3{ 0,0,0 };
   }
