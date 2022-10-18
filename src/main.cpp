@@ -11,10 +11,28 @@
 #include "stb_image.h" // For loading textures
 #include "shader.h"
 #include "simulation_state.h"
+#include "tbb/tbb.h"
+#include "tbb/blocked_range.h"
+#include "tbb/parallel_for.h"
+#include "tbb/task_group.h"
 
 using glm::vec3;
 using glm::mat4;
 using std::stringstream;
+
+class SimulateFlocks {
+  SimulationState* sim_state;
+
+public:
+  SimulateFlocks(SimulationState* sim) {
+    sim_state = sim;
+  }
+  void operator() (const tbb::blocked_range<size_t>& r) const {
+    for (size_t i = r.begin(); i != r.end(); ++i) {
+      sim_state->SimulateFlock(i);
+    }
+  }
+};
 
 // Load a texture from a file. Texture loading code from https://learnopengl.com/Getting-started/Textures
 GLuint LoadTextureAlpha(string filename) {
@@ -185,7 +203,8 @@ int main(int argc, char* argv[])
     state.delta_time = time - state.last_frame_time;
     state.last_frame_time = time;
 
-    state.Simulate();
+    //state.Simulate();
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
 
     mat4 view = mat4(1.0f);
     view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
@@ -230,7 +249,7 @@ int main(int argc, char* argv[])
     }
   }
 
-  state.StopSim();
+  //state.StopSim();
 }
 
 
