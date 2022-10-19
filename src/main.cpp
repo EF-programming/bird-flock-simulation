@@ -61,6 +61,43 @@ void DrawBird(Bird bird, Shader shader) {
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
+void DrawScene(SimulationState* state, Shader grid_shader, Shader bird_shader, int texture_grid, int grid_vao, int triangle_vao, GLFWwindow* window, vec3* flock_colors) {
+  while (state->simulation_active) {
+
+    mat4 view = mat4(1.0f);
+    view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
+    mat4 projection;
+    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 170.0f);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Draw grid
+    glBindTexture(GL_TEXTURE_2D, texture_grid);
+    glBindVertexArray(grid_vao);
+    glUseProgram(grid_shader.id);
+    grid_shader.SetMatrix4fv("model", mat4(1.0f));
+    grid_shader.SetMatrix4fv("view", view);
+    grid_shader.SetMatrix4fv("projection", projection);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    // Draw birds
+    glBindVertexArray(triangle_vao);
+    glUseProgram(bird_shader.id);
+    bird_shader.SetMatrix4fv("view", view);
+    bird_shader.SetMatrix4fv("projection", projection);
+
+    for (int i = 0; i < state->num_of_flocks; ++i) {
+      bird_shader.Set3fv("color", flock_colors[i]);
+      for (int j = state->flocks[i].start_index; j < state->flocks[i].end_index; ++j)
+      {
+        DrawBird(state->birds[j], bird_shader);
+      }
+    }
+    glfwSwapBuffers(window);
+    std::cout << "test" << std::endl;
+  }
+}
+
 int main(int argc, char* argv[])
 {
   glfwInit();
@@ -195,16 +232,42 @@ int main(int argc, char* argv[])
     vec3(0.8f, 0.47451f, 0.654902f),
   };
 
+  string window_title = "Bird Flock Simulation";
+
+  tbb::task_group group;
+  group.run([&] { 
+    float time_of_last_fps_update = 0;
+    int update_count = 0;
+
+    while (state.simulation_active) {
+      float time = (float)glfwGetTime();
+      state.delta_time = time - state.last_frame_time;
+      if (state.delta_time < 0.001f) {
+        continue;
+      }
+      state.last_frame_time = time;
+
+      tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
+
+      update_count += 1;
+      if (time - time_of_last_fps_update >= 1.0f) {
+        stringstream ss;
+        ss << "Bird Flock Simulation" << " " << "Sim/s: " << update_count;
+        window_title = ss.str();
+        glfwSetWindowTitle(window, ss.str().c_str());
+        update_count = 0;
+        time_of_last_fps_update = time;
+      }
+    }
+  });
+
+
   float time_of_last_fps_update = 0;
   int update_count = 0;
 
   while (!glfwWindowShouldClose(window)) {
-    float time = (float)glfwGetTime();
-    state.delta_time = time - state.last_frame_time;
-    state.last_frame_time = time;
-
     //state.Simulate();
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
+    //tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
 
     mat4 view = mat4(1.0f);
     view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
@@ -239,17 +302,19 @@ int main(int argc, char* argv[])
 
     glfwPollEvents();
 
+    float time = (float)glfwGetTime();
     update_count += 1;
     if (time - time_of_last_fps_update >= 1.0f) {
       stringstream ss;
-      ss << "Bird Flock Simulation" << " " << "FPS: " << update_count;
+      ss << window_title << " " << "Draws/s: " << update_count;
       glfwSetWindowTitle(window, ss.str().c_str());
       update_count = 0;
       time_of_last_fps_update = time;
     }
   }
 
-  //state.StopSim();
+  state.StopSim();
+  group.wait();
 }
 
 

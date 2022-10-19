@@ -7,7 +7,6 @@ using std::thread;
 
 void SimulationState::CreateFlocks() {
   num_of_flocks = rand() % (max_flocks - min_flocks + 1) + min_flocks;
-  //int num_of_flocks = 3;
   for (int i = 0; i < num_of_flocks; ++i) {
     flocks[i] = Flock();
     flocks[i].start_index = i * max_birds_in_flock;
@@ -127,7 +126,7 @@ void SimulationState::Simulate() {
 
 void SimulationState::StopSim() {
   simulation_active = false;
-  for (int i = 0; i < num_of_flocks; ++i) {
-    threads[i].join();
-  }
+  //for (int i = 0; i < num_of_flocks; ++i) {
+  //  threads[i].join();
+  //}
 }
