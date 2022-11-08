@@ -33,6 +33,9 @@
     <ClInclude Include="libs\stb_image.h">
       <Filter>libs</Filter>
     </ClInclude>
+    <ClInclude Include="src\kernels.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\grid_f.glsl">

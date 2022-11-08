@@ -13,14 +13,6 @@ void SimulationState::CreateFlocks() {
     int num_of_birds = CreateBirds(flocks[i].start_index);
     flocks[i].end_index = flocks[i].start_index + num_of_birds;
     CalcFlockAvgs(i);
-    //threads[i] = thread([this, i] {
-    //  while (simulation_active) {
-    //    if (flock_update_requests[i]) {
-    //      SimulateFlock(i);
-    //      flock_update_requests[i] = false;
-    //    }
-    //  }
-    //});
   }
 }
 

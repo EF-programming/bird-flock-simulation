@@ -11,28 +11,26 @@
 #include "stb_image.h" // For loading textures
 #include "shader.h"
 #include "simulation_state.h"
-#include "tbb/tbb.h"
-#include "tbb/blocked_range.h"
-#include "tbb/parallel_for.h"
-#include "tbb/task_group.h"
+#include <CL/opencl.h>
+#include "kernels.h"
 
 using glm::vec3;
 using glm::mat4;
 using std::stringstream;
 
-class SimulateFlocks {
-  SimulationState* sim_state;
-
-public:
-  SimulateFlocks(SimulationState* sim) {
-    sim_state = sim;
-  }
-  void operator() (const tbb::blocked_range<size_t>& r) const {
-    for (size_t i = r.begin(); i != r.end(); ++i) {
-      sim_state->SimulateFlock(i);
-    }
-  }
-};
+//class SimulateFlocks {
+//  SimulationState* sim_state;
+//
+//public:
+//  SimulateFlocks(SimulationState* sim) {
+//    sim_state = sim;
+//  }
+//  void operator() (const tbb::blocked_range<size_t>& r) const {
+//    for (size_t i = r.begin(); i != r.end(); ++i) {
+//      sim_state->SimulateFlock(i);
+//    }
+//  }
+//};
 
 // Load a texture from a file. Texture loading code from https://learnopengl.com/Getting-started/Textures
 GLuint LoadTextureAlpha(string filename) {
@@ -94,7 +92,6 @@ void DrawScene(SimulationState* state, Shader grid_shader, Shader bird_shader, i
       }
     }
     glfwSwapBuffers(window);
-    std::cout << "test" << std::endl;
   }
 }
 
@@ -234,32 +231,35 @@ int main(int argc, char* argv[])
 
   string window_title = "Bird Flock Simulation";
 
-  tbb::task_group group;
-  group.run([&] { 
-    float time_of_last_fps_update = 0;
-    int update_count = 0;
+  cl_float* p_birds = &(state.birds[0].pos[0]);
 
-    while (state.simulation_active) {
-      float time = (float)glfwGetTime();
-      state.delta_time = time - state.last_frame_time;
-      if (state.delta_time < 0.001f) {
-        continue;
-      }
-      state.last_frame_time = time;
 
-      tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
+  //tbb::task_group group;
+  //group.run([&] { 
+  //  float time_of_last_fps_update = 0;
+  //  int update_count = 0;
 
-      update_count += 1;
-      if (time - time_of_last_fps_update >= 1.0f) {
-        stringstream ss;
-        ss << "Bird Flock Simulation" << " " << "Sim/s: " << update_count;
-        window_title = ss.str();
-        glfwSetWindowTitle(window, ss.str().c_str());
-        update_count = 0;
-        time_of_last_fps_update = time;
-      }
-    }
-  });
+  //  while (state.simulation_active) {
+  //    float time = (float)glfwGetTime();
+  //    state.delta_time = time - state.last_frame_time;
+  //    if (state.delta_time < 0.001f) {
+  //      continue;
+  //    }
+  //    state.last_frame_time = time;
+
+  //    tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
+
+  //    update_count += 1;
+  //    if (time - time_of_last_fps_update >= 1.0f) {
+  //      stringstream ss;
+  //      ss << "Bird Flock Simulation" << " " << "Sim/s: " << update_count;
+  //      window_title = ss.str();
+  //      glfwSetWindowTitle(window, ss.str().c_str());
+  //      update_count = 0;
+  //      time_of_last_fps_update = time;
+  //    }
+  //  }
+  //});
 
 
   float time_of_last_fps_update = 0;
@@ -314,7 +314,7 @@ int main(int argc, char* argv[])
   }
 
   state.StopSim();
-  group.wait();
+  //group.wait();
 }
 
 

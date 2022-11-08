@@ -8,7 +8,6 @@ using std::thread;
 struct Bird {
   vec3 pos;
   vec3 dir;
-  vec3 force;
 };
 
 struct Flock {
