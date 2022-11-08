@@ -3,37 +3,14 @@
 
 using std::string;
 
-const string generate_random_kernel = 
-"__kernel void generate_random(__global unsigned long* p_current_time, __global unsigned long* p_ulong_rand)\n"
-"{\n"
-"	unsigned int gid = get_global_id(0);\n"
-"	unsigned long width = 500, height = 500;\n"
-"	bool loop_condition = true;\n"
-"	do\n"
-"	{\n"
-"		unsigned long seed = p_current_time + gid;\n"
-"		seed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);\n"
-"		unsigned long result = (seed >> 16) % (width * height);\n"
-"		if ( !( (result > 1 && result < (width - 2)) || (result > width + 1 && result < (width * 2) - 2) || (result % (width - 1) == 0) || (result % (width - 2) == 0) || (result % (width) == 0) || (result % (width + 1) == 0) || (result > ((width * height) - width + 1) && result < (width * height) - 2) || (result > ((width * height) - (width * 2) + 1) && result < (width * height) - width - 2) ) )\n" // excluding edges for simplicity
-"		{\n"
-"			p_ulong_rand[gid] = result;\n"
-"			loop_condition = false;\n"
-"		}\n"
-"	}\n"
-"	while(loop_condition);\n"
-"   barrier(CLK_GLOBAL_MEM_FENCE);\n"
-"}\n";
-
-const char* char_generate_random = { (generate_random_kernel.c_str()) };
-
 const string simulate_bird_kernel =
-"__kernel void simulate_bird(__global float* p_birds, __global unsigned int* p_bird_to_flock, __global float* p_flock_avgs, __global int* p_flock_delim, __global float* delta_time)\n"
+"__kernel void simulate_bird(__global float* p_birds, __global unsigned int* p_bird_to_flock, __global float* p_flock_avgs, __global unsigned int* p_flock_ranges, __global float* delta_time)\n"
 "{\n"
 "	unsigned int gid = get_global_id(0);\n"
 " unsigned int flock_index = p_bird_to_flock[gid];\n"
 " float3 pos_a = vload3(gid * 2, p_birds);\n"
-" unsigned int flock_start = p_flock_delim[flock_index];\n"
-" unsigned int flock_end = p_flock_delim[flock_index + 1];\n"
+" unsigned int flock_start = p_flock_ranges[flock_index];\n"
+" unsigned int flock_end = p_flock_ranges[flock_index + 1];\n"
 " unsigned int index = flock_start;\n"
 " float3 force = float3(0,0,0);\n"
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <glm.hpp>
 #include <thread>
+#include <CL/opencl.h>
 
 using glm::vec3;
 using std::thread;
@@ -11,8 +12,6 @@ struct Bird {
 };
 
 struct Flock {
-  int start_index;
-  int end_index; // exclusive
   vec3 avgdir{ 0,0,0 };
   vec3 avgpos{ 0,0,0 };
 };
@@ -38,6 +37,8 @@ struct SimulationState {
 
   Flock flocks[max_flocks]{};
   Bird birds[max_birds]{};
+  cl_uint bird_to_flock[max_birds]{};
+  cl_uint flock_ranges[max_flocks * 2];
   int num_of_flocks;
 
   thread threads[max_flocks]{};
@@ -48,7 +49,7 @@ struct SimulationState {
   float last_frame_time = 0;
 
   void CreateFlocks();
-  int CreateBirds(int start_index);
+  int CreateBirds(int start_index, int flock);
   void StopSim();
 
   void SimulateBirdPair(int index_a, int index_b);

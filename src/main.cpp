@@ -17,6 +17,8 @@
 using glm::vec3;
 using glm::mat4;
 using std::stringstream;
+using std::endl;
+using std::cout;
 
 //class SimulateFlocks {
 //  SimulationState* sim_state;
@@ -57,42 +59,6 @@ void DrawBird(Bird bird, Shader shader) {
   shader.SetMatrix4fv("model", model);
 
   glDrawArrays(GL_TRIANGLES, 0, 3);
-}
-
-void DrawScene(SimulationState* state, Shader grid_shader, Shader bird_shader, int texture_grid, int grid_vao, int triangle_vao, GLFWwindow* window, vec3* flock_colors) {
-  while (state->simulation_active) {
-
-    mat4 view = mat4(1.0f);
-    view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
-    mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 170.0f);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Draw grid
-    glBindTexture(GL_TEXTURE_2D, texture_grid);
-    glBindVertexArray(grid_vao);
-    glUseProgram(grid_shader.id);
-    grid_shader.SetMatrix4fv("model", mat4(1.0f));
-    grid_shader.SetMatrix4fv("view", view);
-    grid_shader.SetMatrix4fv("projection", projection);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-
-    // Draw birds
-    glBindVertexArray(triangle_vao);
-    glUseProgram(bird_shader.id);
-    bird_shader.SetMatrix4fv("view", view);
-    bird_shader.SetMatrix4fv("projection", projection);
-
-    for (int i = 0; i < state->num_of_flocks; ++i) {
-      bird_shader.Set3fv("color", flock_colors[i]);
-      for (int j = state->flocks[i].start_index; j < state->flocks[i].end_index; ++j)
-      {
-        DrawBird(state->birds[j], bird_shader);
-      }
-    }
-    glfwSwapBuffers(window);
-  }
 }
 
 int main(int argc, char* argv[])
@@ -231,8 +197,106 @@ int main(int argc, char* argv[])
 
   string window_title = "Bird Flock Simulation";
 
-  cl_float* p_birds = &(state.birds[0].pos[0]);
 
+  // OpenCL variables
+
+  cl_float* p_birds = &(state.birds[0].pos[0]);
+  
+  cl_uint* p_bird_to_flock = state.bird_to_flock;
+
+  cl_float* p_flock_avgs = &(state.flocks[0].avgdir[0]);
+
+  cl_uint* p_flock_ranges = state.flock_ranges;
+
+  cl_int err;
+
+  cl_uint num_platforms;
+  cl_platform_id platform_ids[1];
+
+  cl_uint num_devices;
+  cl_device_id device_ids[2];
+
+  cl_context m_context;
+
+  cl_command_queue queue_gpu;
+
+  cl_program program;
+
+  cl_kernel simulate_bird_kernel;
+
+  cl_mem birds_buffer, bird_to_flock_buffer, flock_avgs_buffer, flock_ranges_buffer, time_input_buffer;
+
+  size_t birds_buffer_size = (sizeof(cl_float) * 6 * state.max_birds), bird_to_flock_buffer_size = (sizeof(cl_uint) * state.max_birds), flock_avgs_buffer_size = (sizeof(cl_float) * 2 * state.max_flocks), flock_ranges_buffer_size = (sizeof(cl_uint) * 2 * state.max_flocks), time_input_buffer_size = sizeof(cl_float);
+
+  // OpenCL setup
+
+  err = clGetPlatformIDs(0, nullptr, &num_platforms);
+
+  std::cout << "\nNumber of Platforms are " << num_platforms << "!" << endl;
+
+  err = clGetPlatformIDs(num_platforms, platform_ids, &num_platforms);
+
+  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 0, nullptr, &num_devices);
+
+  cout << "There are " << num_devices << " Device(s) the Platform!" << endl;
+
+  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, num_devices, device_ids, nullptr);
+
+  cout << "\nChecking  Device " << 1 << "..." << endl;
+
+  // Determine Device Types
+  cl_device_type m_type;
+  clGetDeviceInfo(device_ids[0], CL_DEVICE_TYPE, sizeof(m_type), &m_type, nullptr);
+  if (m_type & CL_DEVICE_TYPE_CPU)
+  {
+    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, 1, &device_ids[0], nullptr);
+  }
+  else if (m_type & CL_DEVICE_TYPE_GPU)
+  {
+    cout << "Device is a GPU" << endl;
+    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &device_ids[0], nullptr);
+  }
+  else if (m_type & CL_DEVICE_TYPE_ACCELERATOR)
+  {
+    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ACCELERATOR, 1, &device_ids[0], nullptr);
+  }
+  else if (m_type & CL_DEVICE_TYPE_DEFAULT)
+  {
+    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_DEFAULT, 1, &device_ids[0], nullptr);
+  }
+  else
+  {
+    std::cerr << "\nDevice " << 1 << " is unknowned!" << endl;
+  }
+
+  // Create Context
+  const cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform_ids[0], 0 };
+
+  m_context = clCreateContext(properties, num_devices, device_ids, nullptr, nullptr, &err);
+  //m_context = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
+
+  // Setup Command Queues
+  queue_gpu = clCreateCommandQueue(m_context, device_ids[0], 0, &err);
+
+
+  const char* source[4] = { char_simulate_bird };
+  cl_uint count = 4;
+
+  // Create Program with all kernels
+  program = clCreateProgramWithSource(m_context, count, source, nullptr, &err);
+
+  // Build Program
+  err = clBuildProgram(program, num_devices, device_ids, nullptr, nullptr, nullptr);
+
+  // Create Kernels
+  simulate_bird_kernel = clCreateKernel(program, "simulate_bird", &err);
+
+  // Setup Buffers
+  birds_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, birds_buffer_size, p_birds, &err);
+  bird_to_flock_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, bird_to_flock_buffer_size, p_bird_to_flock, &err);
+  flock_avgs_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, flock_avgs_buffer_size, p_flock_avgs, &err);
+  flock_ranges_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, flock_ranges_buffer_size, p_flock_ranges, &err);
+  time_input_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, time_input_buffer_size, &state.delta_time, &err);
 
   //tbb::task_group group;
   //group.run([&] { 
@@ -293,7 +357,7 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < state.num_of_flocks; ++i) {
       bird_shader.Set3fv("color", flock_colors[i]);
-      for (int j = state.flocks[i].start_index; j < state.flocks[i].end_index; ++j)
+      for (int j = state.flock_ranges[i * 2]; j < state.flock_ranges[i * 2 + 1]; ++j)
       {
         DrawBird(state.birds[j], bird_shader);
       }
