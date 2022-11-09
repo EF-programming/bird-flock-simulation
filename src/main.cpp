@@ -201,7 +201,11 @@ int main(int argc, char* argv[])
   // OpenCL variables
 
   cl_float* p_birds = &(state.birds[0].pos[0]);
-  
+
+  for (int i = 0; i < 24; i = i + 6) {
+    cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
+  }
+
   cl_uint* p_bird_to_flock = state.bird_to_flock;
 
   cl_float* p_flock_avgs = &(state.flocks[0].avgdir[0]);
@@ -279,14 +283,19 @@ int main(int argc, char* argv[])
   queue_gpu = clCreateCommandQueue(m_context, device_ids[0], 0, &err);
 
 
-  const char* source[1] = { char_simulate_bird };
-  cl_uint count = 1;
+  const char* source[1] = { char_simulate_bird }; // array of pointers where each pointer points to a string
+  cl_uint count = 1; // size of the source array
 
   // Create Program with all kernels
   program = clCreateProgramWithSource(m_context, count, source, NULL, &err);
 
   // Build Program
   err = clBuildProgram(program, num_devices, device_ids, nullptr, nullptr, nullptr);
+
+  char meme[4000]{};
+  size_t length;
+  clGetProgramBuildInfo(program, device_ids[0], CL_PROGRAM_BUILD_LOG, sizeof(meme), meme, &length);
+  printf("%s", meme);
 
   // Create Kernels
   simulate_bird_kernel = clCreateKernel(program, "simulate_bird", &err);
@@ -322,7 +331,9 @@ int main(int argc, char* argv[])
 
   err = clEnqueueReadBuffer(queue_gpu, birds_buffer, CL_TRUE, 0, birds_buffer_size, p_birds, 0, NULL, NULL);
 
-
+  for (int i = 0; i < 24; i = i + 6) {
+    cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
+  }
   //tbb::task_group group;
   //group.run([&] { 
   //  float time_of_last_fps_update = 0;
@@ -418,3 +429,92 @@ int main(int argc, char* argv[])
 }
 
 
+//void simulate_bird(float* p_birds, unsigned int* p_bird_to_flock, float* p_flock_avgs, unsigned int* p_flock_ranges, float* delta_time)
+//{
+//	unsigned int gid = get_global_id(0);
+// unsigned int flock_index = p_bird_to_flock[gid];
+// printf("a");
+//
+// float3 pos_a = vload3(gid * 2, p_birds);
+// unsigned int flock_start = p_flock_ranges[flock_index];
+// unsigned int flock_end = p_flock_ranges[flock_index + 1];
+// unsigned int index = flock_start;
+// float3 force = float3(0,0,0);
+//
+//// Simulate bird pairs (separation force)
+// while (index < flock_end) {
+//  float3 pos_b = vload3(index * 2, p_birds);
+//  float3 delta = pos_a - pos_b;
+//  float distance = length(delta);
+//  if (distance < 4.0f) {
+//   force = force - (4.0f - distance) * (delta) * 2.0f;
+//  }
+//  index += 1;
+// }
+//
+//// Flock alignment and cohesion forces
+// float3 flock_dir = vload3(flock_index * 2, p_flock_avgs);
+// float3 flock_pos = vload3(flock_index * 2, p_flock_avgs + 1);
+// // Alignment: each bird steers towards the average direction of flock birds
+// force = force + flock_dir * 0.5f;
+// // Cohesion: each bird steers towards the average position of flock birds
+// force = force + normalize(flock_pos - pos_a) * 0.5f;
+//
+//// If out of world bonds, make birds turn around
+// if (pos_a.x < -30.0f) {
+//  force += float3(1, 0, 0);
+// }
+// else if (pos_a.x > 30.0f) {
+//  force += float3(-1, 0, 0);
+// }
+// if (pos_a.y < -30.0f) {
+//  force += float3(0, 1, 0);
+// }
+// else if (pos_a.y > 30.0f) {
+//  force += float3(0, -1, 0);
+// }
+// if (pos_a.z < 20.0f) {
+//  force += float3(0, 0, 1);
+// }
+// else if (pos_a.z > 35.0f) {
+//  force += float3(0, 0, -1);
+// }
+//
+//// Rotate and move bird
+// float3 dir_a = vload3(gid * 2, p_birds + 3);
+// force = normalize(force);
+// float3 ninety = normalize((cross(cross(dir_a, force), dir_a)));
+// dir_a = cos(0.4f * delta_time) * dir_a + sin(0.4f * delta_time) * ninety;
+// pos_a += dir_a * 2.0f * delta_time;
+// p_birds[gid * 2] = pos_a.x
+// p_birds[gid * 2 + 1] = pos_a.y
+// p_birds[gid * 2 + 2] = pos_a.z
+// p_birds[gid * 2 + 3] = dir_a.x
+// p_birds[gid * 2 + 4] = dir_a.y
+// p_birds[gid * 2 + 5] = dir_a.z
+//
+//// Wait for all birds to get updated
+// barrier(CLK_GLOBAL_MEM_FENCE);
+//
+//// Update flock averages (once per flock)
+// if (gid == flock_start) {
+//  flock_dir = float3(0,0,0);
+//  flock_pos = float3(0,0,0);
+//  for (int i = flock_start; i < flock_end; i++) {
+//   flock_dir += vload3(i * 2, p_birds);
+//   flock_pos += vload3(i * 2, p_birds + 2); 
+//  }
+//  unsigned float num_of_birds = flock_end - flock_start;
+//  flock_dir = normalize(flock_dir / number_of_birds);
+//  flock_pos = flock_pos / num_of_birds;
+//  flock_avgs[flock_index * 2] = flock_dir.x
+//  flock_avgs[flock_index * 2 + 1] = flock_dir.y
+//  flock_avgs[flock_index * 2 + 2] = flock_dir.z
+//  flock_avgs[flock_index * 2 + 3] = flock_pos.x
+//  flock_avgs[flock_index * 2 + 4] = flock_pos.y
+//  flock_avgs[flock_index * 2 + 5] = flock_pos.z
+// }
+//
+//// Wait for all flocks to get updated
+// barrier(CLK_GLOBAL_MEM_FENCE);
+//};
