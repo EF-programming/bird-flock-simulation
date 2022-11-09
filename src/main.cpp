@@ -202,9 +202,9 @@ int main(int argc, char* argv[])
 
   cl_float* p_birds = &(state.birds[0].pos[0]);
 
-  for (int i = 0; i < 24; i = i + 6) {
-    cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
-  }
+  //for (int i = 0; i < 24; i = i + 6) {
+  //  cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
+  //}
 
   cl_uint* p_bird_to_flock = state.bird_to_flock;
 
@@ -230,7 +230,7 @@ int main(int argc, char* argv[])
 
   cl_mem birds_buffer, bird_to_flock_buffer, flock_avgs_buffer, flock_ranges_buffer, time_input_buffer;
 
-  size_t birds_buffer_size = (sizeof(cl_float) * 6 * state.max_birds), bird_to_flock_buffer_size = (sizeof(cl_uint) * state.max_birds), flock_avgs_buffer_size = (sizeof(cl_float) * 2 * state.max_flocks), flock_ranges_buffer_size = (sizeof(cl_uint) * 2 * state.max_flocks), time_input_buffer_size = sizeof(cl_float);
+  size_t birds_buffer_size = (sizeof(cl_float) * 6 * state.max_birds), bird_to_flock_buffer_size = (sizeof(cl_uint) * state.max_birds), flock_avgs_buffer_size = (sizeof(cl_float) * 6 * state.max_flocks), flock_ranges_buffer_size = (sizeof(cl_uint) * 2 * state.max_flocks), time_input_buffer_size = sizeof(cl_float);
 
   // OpenCL setup
 
@@ -300,13 +300,13 @@ int main(int argc, char* argv[])
   // Create Kernels
   simulate_bird_kernel = clCreateKernel(program, "simulate_bird", &err);
 
-  float test = 5.0f;
+  float delta_time = 0;
   // Setup Buffers
   birds_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, birds_buffer_size, p_birds, &err);
   bird_to_flock_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, bird_to_flock_buffer_size, p_bird_to_flock, &err);
   flock_avgs_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, flock_avgs_buffer_size, p_flock_avgs, &err);
   flock_ranges_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, flock_ranges_buffer_size, p_flock_ranges, &err);
-  time_input_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, time_input_buffer_size, &test, &err);
+  time_input_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, time_input_buffer_size, &delta_time, &err);
 
   // Set arguments
   err = clSetKernelArg(simulate_bird_kernel, 0, sizeof(cl_mem), (void*)&birds_buffer);
@@ -314,107 +314,85 @@ int main(int argc, char* argv[])
   err = clSetKernelArg(simulate_bird_kernel, 2, sizeof(cl_mem), (void*)&flock_avgs_buffer);
   err = clSetKernelArg(simulate_bird_kernel, 3, sizeof(cl_mem), (void*)&flock_ranges_buffer);
   err = clSetKernelArg(simulate_bird_kernel, 4, sizeof(cl_mem), (void*)&time_input_buffer);
-
+  
   size_t work_dims[1]{ state.max_birds };
 
-  // Run the kernel
-  err = clEnqueueNDRangeKernel(queue_gpu, // command queue
-    simulate_bird_kernel, // kernel
-    1, // the number of dimensions used (1 to 3) (ex give 2 to work on a 2d matrix)
-    NULL, // useless param, always NULL
-    work_dims, // an array containing the size of each dimension for the entire kernel (for example m and n for a 2d matrix)
-    NULL, // an array containing the size of each dimension for a single work group (a kernel is separated into work groups). NULL means let OpenCL automatically decide
-    0, // event thing
-    NULL, // event thing
-    NULL // event thing
-  );
-
-  err = clEnqueueReadBuffer(queue_gpu, birds_buffer, CL_TRUE, 0, birds_buffer_size, p_birds, 0, NULL, NULL);
-
-  for (int i = 0; i < 24; i = i + 6) {
-    cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
-  }
-  //tbb::task_group group;
-  //group.run([&] { 
-  //  float time_of_last_fps_update = 0;
-  //  int update_count = 0;
-
-  //  while (state.simulation_active) {
-  //    float time = (float)glfwGetTime();
-  //    state.delta_time = time - state.last_frame_time;
-  //    if (state.delta_time < 0.001f) {
-  //      continue;
-  //    }
-  //    state.last_frame_time = time;
-
-  //    tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
-
-  //    update_count += 1;
-  //    if (time - time_of_last_fps_update >= 1.0f) {
-  //      stringstream ss;
-  //      ss << "Bird Flock Simulation" << " " << "Sim/s: " << update_count;
-  //      window_title = ss.str();
-  //      glfwSetWindowTitle(window, ss.str().c_str());
-  //      update_count = 0;
-  //      time_of_last_fps_update = time;
-  //    }
-  //  }
-  //});
+  //for (int i = 0; i < 24; i = i + 6) {
+  //  cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
+  //}
 
 
   float time_of_last_fps_update = 0;
   int update_count = 0;
+  float last_sim_update_time = 0;
 
-  //while (!glfwWindowShouldClose(window)) {
-  //  //state.Simulate();
-  //  //tbb::parallel_for(tbb::blocked_range<size_t>(0, state.num_of_flocks), SimulateFlocks(&state), tbb::auto_partitioner());
+  while (!glfwWindowShouldClose(window)) {
+    float time = (float)glfwGetTime();
+    delta_time = time - last_sim_update_time;
+    if (delta_time < (1.0f / 1000)) { // cap the framerate to 1000/s
+      continue;
+    }
+    last_sim_update_time = time;
 
-  //  mat4 view = mat4(1.0f);
-  //  view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
-  //  mat4 projection;
-  //  projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 170.0f);
+    err = clEnqueueWriteBuffer(queue_gpu, time_input_buffer, CL_TRUE, 0, time_input_buffer_size, &delta_time, 0, NULL, NULL);
 
-  //  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Run the kernel
+    err = clEnqueueNDRangeKernel(queue_gpu, // command queue
+      simulate_bird_kernel, // kernel
+      1, // the number of dimensions used (1 to 3) (ex give 2 to work on a 2d matrix)
+      NULL, // useless param, always NULL
+      work_dims, // an array containing the size of each dimension for the entire kernel (for example m and n for a 2d matrix)
+      NULL, // an array containing the size of each dimension for a single work group (a kernel is separated into work groups). NULL means let OpenCL automatically decide
+      0, // event thing
+      NULL, // event thing
+      NULL // event thing
+    );
 
-  //  // Draw grid
-  //  glBindTexture(GL_TEXTURE_2D, texture_grid);
-  //  glBindVertexArray(grid_vao);
-  //  glUseProgram(grid_shader.id);
-  //  grid_shader.SetMatrix4fv("model", mat4(1.0f));
-  //  grid_shader.SetMatrix4fv("view", view);
-  //  grid_shader.SetMatrix4fv("projection", projection);
-  //  glDrawArrays(GL_TRIANGLES, 0, 6);
+    err = clEnqueueReadBuffer(queue_gpu, birds_buffer, CL_TRUE, 0, birds_buffer_size, p_birds, 0, NULL, NULL);
 
-  //  // Draw birds
-  //  glBindVertexArray(triangle_vao);
-  //  glUseProgram(bird_shader.id);
-  //  bird_shader.SetMatrix4fv("view", view);
-  //  bird_shader.SetMatrix4fv("projection", projection);
+    mat4 view = mat4(1.0f);
+    view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
+    mat4 projection;
+    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 170.0f);
 
-  //  for (int i = 0; i < state.num_of_flocks; ++i) {
-  //    bird_shader.Set3fv("color", flock_colors[i]);
-  //    for (int j = state.flock_ranges[i * 2]; j < state.flock_ranges[i * 2 + 1]; ++j)
-  //    {
-  //      DrawBird(state.birds[j], bird_shader);
-  //    }
-  //  }
-  //  glfwSwapBuffers(window);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  //  glfwPollEvents();
+    // Draw grid
+    glBindTexture(GL_TEXTURE_2D, texture_grid);
+    glBindVertexArray(grid_vao);
+    glUseProgram(grid_shader.id);
+    grid_shader.SetMatrix4fv("model", mat4(1.0f));
+    grid_shader.SetMatrix4fv("view", view);
+    grid_shader.SetMatrix4fv("projection", projection);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
-  //  float time = (float)glfwGetTime();
-  //  update_count += 1;
-  //  if (time - time_of_last_fps_update >= 1.0f) {
-  //    stringstream ss;
-  //    ss << window_title << " " << "Draws/s: " << update_count;
-  //    glfwSetWindowTitle(window, ss.str().c_str());
-  //    update_count = 0;
-  //    time_of_last_fps_update = time;
-  //  }
-  //}
+    // Draw birds
+    glBindVertexArray(triangle_vao);
+    glUseProgram(bird_shader.id);
+    bird_shader.SetMatrix4fv("view", view);
+    bird_shader.SetMatrix4fv("projection", projection);
 
-  state.StopSim();
-  //group.wait();
+    for (int i = 0; i < state.num_of_flocks; ++i) {
+      bird_shader.Set3fv("color", flock_colors[i]);
+      for (int j = state.flock_ranges[i * 2]; j < state.flock_ranges[i * 2 + 1]; ++j)
+      {
+        DrawBird(state.birds[j], bird_shader);
+      }
+    }
+    glfwSwapBuffers(window);
+
+    glfwPollEvents();
+
+
+    update_count += 1;
+    if (time - time_of_last_fps_update >= 1.0f) {
+      stringstream ss;
+      ss << window_title << " " << "Draws/s: " << update_count;
+      glfwSetWindowTitle(window, ss.str().c_str());
+      update_count = 0;
+      time_of_last_fps_update = time;
+    }
+  }
 
   clReleaseMemObject(birds_buffer);
   clReleaseMemObject(bird_to_flock_buffer);
