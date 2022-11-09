@@ -17,16 +17,16 @@ struct Flock {
 };
 
 struct SimulationState {
-  static constexpr float world_size_x_start = -30.0f;
-  static constexpr float world_size_x_end = 30.0f;
-  static constexpr float world_size_y_start = -30.0f;
-  static constexpr float world_size_y_end = 30.0f;
+  static constexpr float world_size_x_start = -50.0f;
+  static constexpr float world_size_x_end = 50.0f;
+  static constexpr float world_size_y_start = -50.0f;
+  static constexpr float world_size_y_end = 50.0f;
   static constexpr float world_size_z_start = 20.0f;
-  static constexpr float world_size_z_end = 35.0f;
+  static constexpr float world_size_z_end = 75.0f;
   static const int min_flocks = 6;
   static const int max_flocks = 7;
-  static const int min_birds_in_flock = 5;
-  static const int max_birds_in_flock = 6;
+  static const int min_birds_in_flock = 199;
+  static const int max_birds_in_flock = 200;
   static const int max_birds = max_flocks * max_birds_in_flock;
   static constexpr float bird_mov_speed = 2.0f;
   static constexpr float bird_rot_speed = 0.4f; // in rad per second

@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
   glfwWindowHint(GLFW_SAMPLES, 16);
   glEnable(GL_MULTISAMPLE);
 
-  GLFWwindow* window = glfwCreateWindow(1024, 768, "Bird Flock Simulation", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(1600, 1000, "Bird Flock Simulation", NULL, NULL);
   if (window == NULL)
   {
     std::cerr << "Failed to create GLFW window" << std::endl;
@@ -157,13 +157,13 @@ int main(int argc, char* argv[])
   glEnableVertexAttribArray(0);
 
   float grid_points[] = {
-     70.0f,  70.0f, 0.0f, 10.0f, 10.0f,  // top right
-     70.0f, -70.0f, 0.0f, 10.0f, 0.0f, // bottom right
-    -70.0f,  70.0f, 0.0f, 0.0f, 10.0f, // top left 
+     170.0f,  170.0f, 0.0f, 24.0f, 24.0f,  // top right
+     170.0f, -170.0f, 0.0f, 24.0f, 0.0f, // bottom right
+    -170.0f,  170.0f, 0.0f, 0.0f, 24.0f, // top left 
 
-     70.0f, -70.0f, 0.0f, 10.0f, 0.0f, // bottom right
-    -70.0f, -70.0f, 0.0f, 0.0f, 0.0f, // bottom left
-    -70.0f,  70.0f, 0.0f, 0.0f, 10.0f  // top left
+     170.0f, -170.0f, 0.0f, 24.0f, 0.0f, // bottom right
+    -170.0f, -170.0f, 0.0f, 0.0f, 0.0f, // bottom left
+    -170.0f,  170.0f, 0.0f, 0.0f, 24.0f  // top left
   };
 
   GLuint grid_vbo = 0;
@@ -351,9 +351,9 @@ int main(int argc, char* argv[])
     err = clEnqueueReadBuffer(queue_gpu, birds_buffer, CL_TRUE, 0, birds_buffer_size, p_birds, 0, NULL, NULL);
 
     mat4 view = mat4(1.0f);
-    view = glm::translate(view, vec3(0.0f, 0.0f, -120.0f));
+    view = glm::translate(view, vec3(0.0f, 0.0f, -150.0f));
     mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 170.0f);
+    projection = glm::perspective(glm::radians(45.0f), 1600.0f / 1000.0f, 0.1f, 230.0f);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

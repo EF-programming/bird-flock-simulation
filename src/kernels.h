@@ -67,9 +67,9 @@ const string simulate_bird_kernel =
 " dir_a = (float)cos(0.4f * delta_time[0]) * dir_a + (float)sin(0.4f * delta_time[0]) * ninety;\n"
 " pos_a += dir_a * 2.0f * delta_time[0];\n"
 
-" if (gid == -1) {\n"
-"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
-" }\n"
+//" if (gid == -1) {\n"
+//"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
+//" }\n"
 
 " p_birds[gid * 6] = pos_a.x;\n"
 " p_birds[gid * 6 + 1] = pos_a.y;\n"
@@ -78,9 +78,9 @@ const string simulate_bird_kernel =
 " p_birds[gid * 6 + 4] = dir_a.y;\n"
 " p_birds[gid * 6 + 5] = dir_a.z;\n"
 
-" if (gid == -1) {\n"
-"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
-" }\n"
+//" if (gid == -1) {\n"
+//"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
+//" }\n"
 
 //"printf(\"%d: %f - %f - %f\\n\", gid, force.x, force.y, force.z);"
 //"printf(\"%d: %f - %f - %f\\n\", gid, dir_a.x, dir_a.y, dir_a.z);"
