@@ -92,4 +92,5 @@ const string simulate_bird_kernel =
 " barrier(CLK_GLOBAL_MEM_FENCE);\n"
 "}\n";
 
+const size_t char_simulate_bird_size = simulate_bird_kernel.length();
 const char* char_simulate_bird = { (simulate_bird_kernel.c_str()) };
