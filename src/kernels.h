@@ -60,12 +60,24 @@ const string simulate_bird_kernel =
 " float3 ninety = normalize((cross(cross(dir_a, force), dir_a)));\n"
 " dir_a = cos(0.4f * delta_time[0]) * dir_a + sin(0.4f * delta_time[0]) * ninety;\n"
 " pos_a += dir_a * 2.0f * delta_time[0];\n"
-" p_birds[gid * 2] = pos_a.x;\n"
-" p_birds[gid * 2 + 1] = pos_a.y;\n"
-" p_birds[gid * 2 + 2] = pos_a.z;\n"
-" p_birds[gid * 2 + 3] = dir_a.x;\n"
-" p_birds[gid * 2 + 4] = dir_a.y;\n"
-" p_birds[gid * 2 + 5] = dir_a.z;\n"
+
+" if (gid == -1) {\n"
+"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
+" }\n"
+
+" p_birds[gid * 6] = pos_a.x;\n"
+" p_birds[gid * 6 + 1] = pos_a.y;\n"
+" p_birds[gid * 6 + 2] = pos_a.z;\n"
+" p_birds[gid * 6 + 3] = dir_a.x;\n"
+" p_birds[gid * 6 + 4] = dir_a.y;\n"
+" p_birds[gid * 6 + 5] = dir_a.z;\n"
+
+" if (gid == -1) {\n"
+"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
+" }\n"
+
+//"printf(\"%d: %f - %f - %f\\n\", gid, force.x, force.y, force.z);"
+//"printf(\"%d: %f - %f - %f\\n\", gid, dir_a.x, dir_a.y, dir_a.z);"
 
 // Wait for all birds to get updated
 " barrier(CLK_GLOBAL_MEM_FENCE);\n"
@@ -81,14 +93,15 @@ const string simulate_bird_kernel =
 "  float num_of_birds = flock_end - flock_start;\n"
 "  flock_dir = normalize(flock_dir / num_of_birds);\n"
 "  flock_pos = flock_pos / num_of_birds;\n"
-"  p_flock_avgs[flock_index * 2] = flock_dir.x;\n"
-"  p_flock_avgs[flock_index * 2 + 1] = flock_dir.y;\n"
-"  p_flock_avgs[flock_index * 2 + 2] = flock_dir.z;\n"
-"  p_flock_avgs[flock_index * 2 + 3] = flock_pos.x;\n"
-"  p_flock_avgs[flock_index * 2 + 4] = flock_pos.y;\n"
-"  p_flock_avgs[flock_index * 2 + 5] = flock_pos.z;\n"
+"  p_flock_avgs[flock_index * 6] = flock_dir.x;\n"
+"  p_flock_avgs[flock_index * 6 + 1] = flock_dir.y;\n"
+"  p_flock_avgs[flock_index * 6 + 2] = flock_dir.z;\n"
+"  p_flock_avgs[flock_index * 6 + 3] = flock_pos.x;\n"
+"  p_flock_avgs[flock_index * 6 + 4] = flock_pos.y;\n"
+"  p_flock_avgs[flock_index * 6 + 5] = flock_pos.z;\n"
 " }\n"
 
+"printf(\"\");"
 // Wait for all flocks to get updated
 " barrier(CLK_GLOBAL_MEM_FENCE);\n"
 "}\n";
