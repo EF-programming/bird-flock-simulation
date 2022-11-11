@@ -215,10 +215,11 @@ int main(int argc, char* argv[])
   cl_int err;
 
   cl_uint num_platforms;
-  cl_platform_id platform_ids[1];
+  //cl_platform_id platform_ids[1];
 
   cl_uint num_devices;
-  cl_device_id device_ids[2];
+  //cl_device_id device_ids[2];
+  cl_device_id device_id;
 
   cl_context m_context;
 
@@ -234,53 +235,78 @@ int main(int argc, char* argv[])
 
   // OpenCL setup
 
-  err = clGetPlatformIDs(0, nullptr, &num_platforms);
-
-  std::cout << "\nNumber of Platforms are " << num_platforms << "!" << endl;
-
-  err = clGetPlatformIDs(num_platforms, platform_ids, &num_platforms);
-
-  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 0, nullptr, &num_devices);
-
-  cout << "There are " << num_devices << " Device(s) the Platform!" << endl;
-
-  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, num_devices, device_ids, nullptr);
-
-  cout << "\nChecking  Device " << 1 << "..." << endl;
-
-  // Determine Device Types
-  cl_device_type m_type;
-  clGetDeviceInfo(device_ids[0], CL_DEVICE_TYPE, sizeof(m_type), &m_type, nullptr);
-  if (m_type & CL_DEVICE_TYPE_CPU)
-  {
-    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, 1, &device_ids[0], nullptr);
-  }
-  else if (m_type & CL_DEVICE_TYPE_GPU)
-  {
-    cout << "Device is a GPU" << endl;
-    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &device_ids[0], nullptr);
-  }
-  else if (m_type & CL_DEVICE_TYPE_ACCELERATOR)
-  {
-    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ACCELERATOR, 1, &device_ids[0], nullptr);
-  }
-  else if (m_type & CL_DEVICE_TYPE_DEFAULT)
-  {
-    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_DEFAULT, 1, &device_ids[0], nullptr);
-  }
-  else
-  {
-    std::cerr << "\nDevice " << 1 << " is unknowned!" << endl;
-  }
-
-  // Create Context
+  err = clGetPlatformIDs(0, NULL, &num_platforms);
+  cl_platform_id* platform_ids = new cl_platform_id[num_platforms];
+  err = clGetPlatformIDs(num_platforms, platform_ids, NULL);
   const cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform_ids[0], 0 };
 
-  m_context = clCreateContext(properties, num_devices, device_ids, nullptr, nullptr, &err);
-  //m_context = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
+  m_context = clCreateContextFromType(properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
 
-  // Setup Command Queues
+  size_t databytes;
+  err = clGetContextInfo(m_context, CL_CONTEXT_DEVICES, 0, NULL, &databytes);
+
+  cl_device_id device_ids[6];
+
+  clGetContextInfo(m_context, CL_CONTEXT_DEVICES, databytes, device_ids, NULL);
+
   queue_gpu = clCreateCommandQueue(m_context, device_ids[0], 0, &err);
+
+
+
+
+
+
+
+
+
+  
+  //err = clGetPlatformIDs(0, nullptr, &num_platforms);
+
+  //std::cout << "\nNumber of Platforms are " << num_platforms << "!" << endl;
+
+  //err = clGetPlatformIDs(num_platforms, platform_ids, &num_platforms);
+
+  //err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 0, nullptr, &num_devices);
+
+  //cout << "There are " << num_devices << " Device(s) the Platform!" << endl;
+
+  //err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, num_devices, device_ids, nullptr);
+
+  //cout << "\nChecking  Device " << 1 << "..." << endl;
+
+  //// Determine Device Types
+  //cl_device_type m_type;
+  //clGetDeviceInfo(device_ids[0], CL_DEVICE_TYPE, sizeof(m_type), &m_type, nullptr);
+  //if (m_type & CL_DEVICE_TYPE_CPU)
+  //{
+  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, 1, &device_ids[0], nullptr);
+  //}
+  //else if (m_type & CL_DEVICE_TYPE_GPU)
+  //{
+  //  cout << "Device is a GPU" << endl;
+  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &device_ids[0], nullptr);
+  //}
+  //else if (m_type & CL_DEVICE_TYPE_ACCELERATOR)
+  //{
+  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ACCELERATOR, 1, &device_ids[0], nullptr);
+  //}
+  //else if (m_type & CL_DEVICE_TYPE_DEFAULT)
+  //{
+  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_DEFAULT, 1, &device_ids[0], nullptr);
+  //}
+  //else
+  //{
+  //  std::cerr << "\nDevice " << 1 << " is unknowned!" << endl;
+  //}
+
+  //// Create Context
+  //const cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform_ids[0], 0 };
+
+  //m_context = clCreateContext(properties, num_devices, device_ids, nullptr, nullptr, &err);
+  ////m_context = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
+
+  //// Setup Command Queues
+  //queue_gpu = clCreateCommandQueue(m_context, device_ids[0], 0, &err);
 
 
   const char* source[1] = { char_simulate_bird }; // array of pointers where each pointer points to a string
@@ -290,12 +316,12 @@ int main(int argc, char* argv[])
   program = clCreateProgramWithSource(m_context, count, source, NULL, &err);
 
   // Build Program
-  err = clBuildProgram(program, num_devices, device_ids, nullptr, nullptr, nullptr);
+  err = clBuildProgram(program, NULL, 0, NULL, NULL, NULL);
 
-  char meme[4000]{};
+  char compiler_output[4000]{}; // size must be larger than 'length' var
   size_t length;
-  clGetProgramBuildInfo(program, device_ids[0], CL_PROGRAM_BUILD_LOG, sizeof(meme), meme, &length);
-  printf("%s", meme);
+  clGetProgramBuildInfo(program, device_ids[0], CL_PROGRAM_BUILD_LOG, sizeof(compiler_output), compiler_output, &length);
+  printf("%s", compiler_output);
 
   // Create Kernels
   simulate_bird_kernel = clCreateKernel(program, "simulate_bird", &err);
@@ -399,7 +425,6 @@ int main(int argc, char* argv[])
   clReleaseMemObject(flock_avgs_buffer);
   clReleaseMemObject(flock_ranges_buffer);
   clReleaseMemObject(time_input_buffer);
- // clReleaseDevice(device_ids[0]);
   clReleaseContext(m_context);
   clReleaseKernel(simulate_bird_kernel);
   clReleaseProgram(program);
