@@ -20,20 +20,6 @@ using std::stringstream;
 using std::endl;
 using std::cout;
 
-//class SimulateFlocks {
-//  SimulationState* sim_state;
-//
-//public:
-//  SimulateFlocks(SimulationState* sim) {
-//    sim_state = sim;
-//  }
-//  void operator() (const tbb::blocked_range<size_t>& r) const {
-//    for (size_t i = r.begin(); i != r.end(); ++i) {
-//      sim_state->SimulateFlock(i);
-//    }
-//  }
-//};
-
 // Load a texture from a file. Texture loading code from https://learnopengl.com/Getting-started/Textures
 GLuint LoadTextureAlpha(string filename) {
   int texture_width;
@@ -136,6 +122,9 @@ int main(int argc, char* argv[])
   // Don't draw non-visible faces
   //glEnable(GL_CULL_FACE);
   glEnable(GL_BLEND);
+  // Ignore camera near and far plane for clipping
+  glEnable(GL_DEPTH_CLAMP);
+
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO); // Use basic transparency blending proportional to alpha
 
   float triangle_points[] = {
@@ -157,13 +146,13 @@ int main(int argc, char* argv[])
   glEnableVertexAttribArray(0);
 
   float grid_points[] = {
-     170.0f,  170.0f, 0.0f, 24.0f, 24.0f,  // top right
-     170.0f, -170.0f, 0.0f, 24.0f, 0.0f, // bottom right
-    -170.0f,  170.0f, 0.0f, 0.0f, 24.0f, // top left 
+     170.0f,  170.0f, 0.0f, 27.0f, 27.0f,  // top right
+     170.0f, -170.0f, 0.0f, 27.0f, 0.0f, // bottom right
+    -170.0f,  170.0f, 0.0f, 0.0f, 27.0f, // top left 
 
-     170.0f, -170.0f, 0.0f, 24.0f, 0.0f, // bottom right
+     170.0f, -170.0f, 0.0f, 27.0f, 0.0f, // bottom right
     -170.0f, -170.0f, 0.0f, 0.0f, 0.0f, // bottom left
-    -170.0f,  170.0f, 0.0f, 0.0f, 24.0f  // top left
+    -170.0f,  170.0f, 0.0f, 0.0f, 27.0f  // top left
   };
 
   GLuint grid_vbo = 0;
@@ -202,10 +191,6 @@ int main(int argc, char* argv[])
 
   cl_float* p_birds = &(state.birds[0].pos[0]);
 
-  //for (int i = 0; i < 24; i = i + 6) {
-  //  cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
-  //}
-
   cl_uint* p_bird_to_flock = state.bird_to_flock;
 
   cl_float* p_flock_avgs = &(state.flocks[0].avgdir[0]);
@@ -215,10 +200,9 @@ int main(int argc, char* argv[])
   cl_int err;
 
   cl_uint num_platforms;
-  //cl_platform_id platform_ids[1];
 
   cl_uint num_devices;
-  //cl_device_id device_ids[2];
+
   cl_device_id device_id;
 
   cl_context m_context;
@@ -250,64 +234,6 @@ int main(int argc, char* argv[])
   clGetContextInfo(m_context, CL_CONTEXT_DEVICES, databytes, device_ids, NULL);
 
   queue_gpu = clCreateCommandQueue(m_context, device_ids[0], 0, &err);
-
-
-
-
-
-
-
-
-
-  
-  //err = clGetPlatformIDs(0, nullptr, &num_platforms);
-
-  //std::cout << "\nNumber of Platforms are " << num_platforms << "!" << endl;
-
-  //err = clGetPlatformIDs(num_platforms, platform_ids, &num_platforms);
-
-  //err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 0, nullptr, &num_devices);
-
-  //cout << "There are " << num_devices << " Device(s) the Platform!" << endl;
-
-  //err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, num_devices, device_ids, nullptr);
-
-  //cout << "\nChecking  Device " << 1 << "..." << endl;
-
-  //// Determine Device Types
-  //cl_device_type m_type;
-  //clGetDeviceInfo(device_ids[0], CL_DEVICE_TYPE, sizeof(m_type), &m_type, nullptr);
-  //if (m_type & CL_DEVICE_TYPE_CPU)
-  //{
-  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, 1, &device_ids[0], nullptr);
-  //}
-  //else if (m_type & CL_DEVICE_TYPE_GPU)
-  //{
-  //  cout << "Device is a GPU" << endl;
-  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &device_ids[0], nullptr);
-  //}
-  //else if (m_type & CL_DEVICE_TYPE_ACCELERATOR)
-  //{
-  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ACCELERATOR, 1, &device_ids[0], nullptr);
-  //}
-  //else if (m_type & CL_DEVICE_TYPE_DEFAULT)
-  //{
-  //  err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_DEFAULT, 1, &device_ids[0], nullptr);
-  //}
-  //else
-  //{
-  //  std::cerr << "\nDevice " << 1 << " is unknowned!" << endl;
-  //}
-
-  //// Create Context
-  //const cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform_ids[0], 0 };
-
-  //m_context = clCreateContext(properties, num_devices, device_ids, nullptr, nullptr, &err);
-  ////m_context = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
-
-  //// Setup Command Queues
-  //queue_gpu = clCreateCommandQueue(m_context, device_ids[0], 0, &err);
-
 
   const char* source[1] = { char_simulate_bird }; // array of pointers where each pointer points to a string
   cl_uint count = 1; // size of the source array
@@ -343,10 +269,6 @@ int main(int argc, char* argv[])
   
   size_t work_dims[1]{ state.max_birds };
 
-  //for (int i = 0; i < 24; i = i + 6) {
-  //  cout << p_birds[i] << " - " << p_birds[i + 1] << " - " << p_birds[i + 2] << endl;
-  //}
-
 
   float time_of_last_fps_update = 0;
   int update_count = 0;
@@ -379,7 +301,7 @@ int main(int argc, char* argv[])
     mat4 view = mat4(1.0f);
     view = glm::translate(view, vec3(0.0f, 0.0f, -150.0f));
     mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 1600.0f / 1000.0f, 0.1f, 230.0f);
+    projection = glm::perspective(glm::radians(45.0f), 1600.0f / 1000.0f, 0.1f, 1000.0f);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -425,99 +347,9 @@ int main(int argc, char* argv[])
   clReleaseMemObject(flock_avgs_buffer);
   clReleaseMemObject(flock_ranges_buffer);
   clReleaseMemObject(time_input_buffer);
+  delete[] platform_ids;
   clReleaseContext(m_context);
   clReleaseKernel(simulate_bird_kernel);
   clReleaseProgram(program);
   clReleaseCommandQueue(queue_gpu);
 }
-
-
-//void simulate_bird(float* p_birds, unsigned int* p_bird_to_flock, float* p_flock_avgs, unsigned int* p_flock_ranges, float* delta_time)
-//{
-//	unsigned int gid = get_global_id(0);
-// unsigned int flock_index = p_bird_to_flock[gid];
-// printf("a");
-//
-// float3 pos_a = vload3(gid * 2, p_birds);
-// unsigned int flock_start = p_flock_ranges[flock_index];
-// unsigned int flock_end = p_flock_ranges[flock_index + 1];
-// unsigned int index = flock_start;
-// float3 force = float3(0,0,0);
-//
-//// Simulate bird pairs (separation force)
-// while (index < flock_end) {
-//  float3 pos_b = vload3(index * 2, p_birds);
-//  float3 delta = pos_a - pos_b;
-//  float distance = length(delta);
-//  if (distance < 4.0f) {
-//   force = force - (4.0f - distance) * (delta) * 2.0f;
-//  }
-//  index += 1;
-// }
-//
-//// Flock alignment and cohesion forces
-// float3 flock_dir = vload3(flock_index * 2, p_flock_avgs);
-// float3 flock_pos = vload3(flock_index * 2, p_flock_avgs + 1);
-// // Alignment: each bird steers towards the average direction of flock birds
-// force = force + flock_dir * 0.5f;
-// // Cohesion: each bird steers towards the average position of flock birds
-// force = force + normalize(flock_pos - pos_a) * 0.5f;
-//
-//// If out of world bonds, make birds turn around
-// if (pos_a.x < -30.0f) {
-//  force += float3(1, 0, 0);
-// }
-// else if (pos_a.x > 30.0f) {
-//  force += float3(-1, 0, 0);
-// }
-// if (pos_a.y < -30.0f) {
-//  force += float3(0, 1, 0);
-// }
-// else if (pos_a.y > 30.0f) {
-//  force += float3(0, -1, 0);
-// }
-// if (pos_a.z < 20.0f) {
-//  force += float3(0, 0, 1);
-// }
-// else if (pos_a.z > 35.0f) {
-//  force += float3(0, 0, -1);
-// }
-//
-//// Rotate and move bird
-// float3 dir_a = vload3(gid * 2, p_birds + 3);
-// force = normalize(force);
-// float3 ninety = normalize((cross(cross(dir_a, force), dir_a)));
-// dir_a = cos(0.4f * delta_time) * dir_a + sin(0.4f * delta_time) * ninety;
-// pos_a += dir_a * 2.0f * delta_time;
-// p_birds[gid * 2] = pos_a.x
-// p_birds[gid * 2 + 1] = pos_a.y
-// p_birds[gid * 2 + 2] = pos_a.z
-// p_birds[gid * 2 + 3] = dir_a.x
-// p_birds[gid * 2 + 4] = dir_a.y
-// p_birds[gid * 2 + 5] = dir_a.z
-//
-//// Wait for all birds to get updated
-// barrier(CLK_GLOBAL_MEM_FENCE);
-//
-//// Update flock averages (once per flock)
-// if (gid == flock_start) {
-//  flock_dir = float3(0,0,0);
-//  flock_pos = float3(0,0,0);
-//  for (int i = flock_start; i < flock_end; i++) {
-//   flock_dir += vload3(i * 2, p_birds);
-//   flock_pos += vload3(i * 2, p_birds + 2); 
-//  }
-//  unsigned float num_of_birds = flock_end - flock_start;
-//  flock_dir = normalize(flock_dir / number_of_birds);
-//  flock_pos = flock_pos / num_of_birds;
-//  flock_avgs[flock_index * 2] = flock_dir.x
-//  flock_avgs[flock_index * 2 + 1] = flock_dir.y
-//  flock_avgs[flock_index * 2 + 2] = flock_dir.z
-//  flock_avgs[flock_index * 2 + 3] = flock_pos.x
-//  flock_avgs[flock_index * 2 + 4] = flock_pos.y
-//  flock_avgs[flock_index * 2 + 5] = flock_pos.z
-// }
-//
-//// Wait for all flocks to get updated
-// barrier(CLK_GLOBAL_MEM_FENCE);
-//};

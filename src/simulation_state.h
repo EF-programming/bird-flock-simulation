@@ -23,7 +23,7 @@ struct SimulationState {
   static constexpr float world_size_y_end = 50.0f;
   static constexpr float world_size_z_start = 20.0f;
   static constexpr float world_size_z_end = 75.0f;
-  static const int min_flocks = 6;
+  static const int min_flocks = 7;
   static const int max_flocks = 7;
   static const int min_birds_in_flock = 199;
   static const int max_birds_in_flock = 200;
@@ -50,11 +50,5 @@ struct SimulationState {
 
   void CreateFlocks();
   int CreateBirds(int start_index, int flock);
-  void StopSim();
-
-  void SimulateBirdPair(int index_a, int index_b);
-  void SimulateFlock(int index);
-  void Simulate();
-  void CalcFlockAvgs(int i);
 };
 
