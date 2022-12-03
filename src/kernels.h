@@ -15,8 +15,6 @@ const string simulate_bird_kernel =
 " unsigned int index = flock_start;\n"
 " float3 force = (float3)(0,0,0);\n"
 
-//"  printf(\"%d\\n\", flock_index);\n"
-
 // Simulate bird pairs (separation force)
 " while (index < flock_end) {\n"
 "  if (gid == index) {\n"
@@ -41,16 +39,16 @@ const string simulate_bird_kernel =
 " force = force + normalize(flock_pos - pos_a) * 0.5f;\n"
 
 // If out of world bonds, make birds turn around
-" if (pos_a.x < -55.0f) {\n"
+" if (pos_a.x < -80.0f) {\n"
 "  force += (float3)(1, 0, 0);\n"
 " }\n"
-" else if (pos_a.x > 55.0f) {\n"
+" else if (pos_a.x > 80.0f) {\n"
 "  force += (float3)(-1, 0, 0);\n"
 " }\n"
-" if (pos_a.y < -35.0f) {\n"
+" if (pos_a.y < -50.0f) {\n"
 "  force += (float3)(0, 1, 0);\n"
 " }\n"
-" else if (pos_a.y > 35.0f) {\n"
+" else if (pos_a.y > 50.0f) {\n"
 "  force += (float3)(0, -1, 0);\n"
 " }\n"
 " if (pos_a.z < 20.0f) {\n"
@@ -67,55 +65,42 @@ const string simulate_bird_kernel =
 " dir_a = (float)cos(0.4f * delta_time[0]) * dir_a + (float)sin(0.4f * delta_time[0]) * ninety;\n"
 " pos_a += dir_a * 2.0f * delta_time[0];\n"
 
-//" if (gid == -1) {\n"
-//"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
-//" }\n"
-
 " p_birds[gid * 6] = pos_a.x;\n"
 " p_birds[gid * 6 + 1] = pos_a.y;\n"
 " p_birds[gid * 6 + 2] = pos_a.z;\n"
 " p_birds[gid * 6 + 3] = dir_a.x;\n"
 " p_birds[gid * 6 + 4] = dir_a.y;\n"
 " p_birds[gid * 6 + 5] = dir_a.z;\n"
-
-//" if (gid == -1) {\n"
-//"  printf(\"%f\\n\", p_birds[gid * 6]);\n"
-//" }\n"
-
-//"printf(\"%d: %f - %f - %f\\n\", gid, force.x, force.y, force.z);"
-//"printf(\"%d: %f - %f - %f\\n\", gid, dir_a.x, dir_a.y, dir_a.z);"
-
-// Wait for all birds to get updated
-" barrier(CLK_GLOBAL_MEM_FENCE);\n"
-
-// Update flock averages (once per flock)
-" if (gid == flock_start) {\n"
-"  flock_dir = (float3)(0,0,0);\n"
-"  flock_pos = (float3)(0,0,0);\n"
-"  for (int i = flock_start; i < flock_end; i++) {\n"
-"   flock_dir += vload3(i * 2, p_birds + 3);\n"
-"   flock_pos += vload3(i * 2, p_birds); \n"
-"  }\n"
-"  float num_of_birds = flock_end - flock_start;\n"
-"  flock_dir = normalize(flock_dir / (float)num_of_birds);\n"
-"  flock_pos = flock_pos / (float)num_of_birds;\n"
-"  p_flock_avgs[flock_index * 6] = flock_dir.x;\n"
-"  p_flock_avgs[flock_index * 6 + 1] = flock_dir.y;\n"
-"  p_flock_avgs[flock_index * 6 + 2] = flock_dir.z;\n"
-"  p_flock_avgs[flock_index * 6 + 3] = flock_pos.x;\n"
-"  p_flock_avgs[flock_index * 6 + 4] = flock_pos.y;\n"
-"  p_flock_avgs[flock_index * 6 + 5] = flock_pos.z;\n"
-" }\n"
-
-//" if (gid == 20) {\n"
-//"  printf(\"%d - %d\\n\", flock_start, flock_end);\n"
-//"  printf(\"%f - %f - %f\\n\", flock_pos.x, flock_pos.y, flock_pos.z);"
-//" }\n"
-
-//"printf(\"\");"
-// Wait for all flocks to get updated
-" barrier(CLK_GLOBAL_MEM_FENCE);\n"
 "}\n";
 
 const size_t char_simulate_bird_size = simulate_bird_kernel.length();
 const char* char_simulate_bird = { (simulate_bird_kernel.c_str()) };
+
+
+const string calc_flock_avgs_kernel =
+"__kernel void calc_flock_avgs(__global float* p_birds, __global float* p_flock_avgs, __global unsigned int* p_flock_ranges)\n"
+"{\n"
+"	unsigned int flock_index = get_global_id(0);\n"
+" unsigned int flock_start = p_flock_ranges[flock_index * 2];\n"
+" unsigned int flock_end = p_flock_ranges[flock_index * 2 + 1];\n"
+" float3 flock_dir = (float3)(0,0,0);\n"
+" float3 flock_pos = (float3)(0,0,0);\n"
+
+// Update flock averages
+" for (int i = flock_start; i < flock_end; i++) {\n"
+"  flock_dir += vload3(i * 2, p_birds + 3);\n"
+"  flock_pos += vload3(i * 2, p_birds); \n"
+" }\n"
+" float num_of_birds = flock_end - flock_start;\n"
+" flock_dir = normalize(flock_dir / (float)num_of_birds);\n"
+" flock_pos = flock_pos / (float)num_of_birds;\n"
+" p_flock_avgs[flock_index * 6] = flock_dir.x;\n"
+" p_flock_avgs[flock_index * 6 + 1] = flock_dir.y;\n"
+" p_flock_avgs[flock_index * 6 + 2] = flock_dir.z;\n"
+" p_flock_avgs[flock_index * 6 + 3] = flock_pos.x;\n"
+" p_flock_avgs[flock_index * 6 + 4] = flock_pos.y;\n"
+" p_flock_avgs[flock_index * 6 + 5] = flock_pos.z;\n"
+"}\n";
+
+const size_t char_calc_flock_avgs_size = calc_flock_avgs_kernel.length();
+const char* char_calc_flock_avgs = { (calc_flock_avgs_kernel.c_str()) };

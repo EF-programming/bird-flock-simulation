@@ -38,7 +38,7 @@ GLuint LoadTextureAlpha(string filename) {
   return texture;
 };
 
-void DrawBird(Bird bird, Shader shader) {
+void DrawBird(Bird& bird, Shader& shader) {
   mat4 model = mat4(1.0f);
   model = glm::translate(model, bird.pos);
   model = glm::rotate(model, atan2(bird.dir.y, bird.dir.x), vec3(0.0f, 0.0f, 1.0f));
@@ -146,13 +146,13 @@ int main(int argc, char* argv[])
   glEnableVertexAttribArray(0);
 
   float grid_points[] = {
-     170.0f,  170.0f, 0.0f, 27.0f, 27.0f,  // top right
-     170.0f, -170.0f, 0.0f, 27.0f, 0.0f, // bottom right
-    -170.0f,  170.0f, 0.0f, 0.0f, 27.0f, // top left 
+     200.0f,  200.0f, 0.0f, 35.0f, 35.0f,  // top right
+     200.0f, -200.0f, 0.0f, 35.0f, 0.0f, // bottom right
+    -200.0f,  200.0f, 0.0f, 0.0f, 35.0f, // top left 
 
-     170.0f, -170.0f, 0.0f, 27.0f, 0.0f, // bottom right
-    -170.0f, -170.0f, 0.0f, 0.0f, 0.0f, // bottom left
-    -170.0f,  170.0f, 0.0f, 0.0f, 27.0f  // top left
+     200.0f, -200.0f, 0.0f, 35.0f, 0.0f, // bottom right
+    -200.0f, -200.0f, 0.0f, 0.0f, 0.0f, // bottom left
+    -200.0f,  200.0f, 0.0f, 0.0f, 35.0f  // top left
   };
 
   GLuint grid_vbo = 0;
@@ -201,19 +201,20 @@ int main(int argc, char* argv[])
 
   cl_uint num_platforms;
 
-  cl_uint num_devices;
-
-  cl_device_id device_id;
-
-  cl_context m_context;
+  cl_context gpu_context;
+  cl_context cpu_context;
 
   cl_command_queue queue_gpu;
+  cl_command_queue queue_cpu;
 
-  cl_program program;
+  cl_program program_gpu;
+  cl_program program_cpu;
 
   cl_kernel simulate_bird_kernel;
+  cl_kernel calc_flock_avgs_kernel;
 
-  cl_mem birds_buffer, bird_to_flock_buffer, flock_avgs_buffer, flock_ranges_buffer, time_input_buffer;
+  cl_mem birds_buffer_gpu, bird_to_flock_buffer, flock_avgs_buffer_gpu, flock_ranges_buffer_gpu, time_input_buffer;
+  cl_mem birds_buffer_cpu, flock_avgs_buffer_cpu, flock_ranges_buffer_cpu;
 
   size_t birds_buffer_size = (sizeof(cl_float) * 6 * state.max_birds), bird_to_flock_buffer_size = (sizeof(cl_uint) * state.max_birds), flock_avgs_buffer_size = (sizeof(cl_float) * 6 * state.max_flocks), flock_ranges_buffer_size = (sizeof(cl_uint) * 2 * state.max_flocks), time_input_buffer_size = sizeof(cl_float);
 
@@ -223,83 +224,192 @@ int main(int argc, char* argv[])
   cl_platform_id* platform_ids = new cl_platform_id[num_platforms];
   err = clGetPlatformIDs(num_platforms, platform_ids, NULL);
   const cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform_ids[0], 0 };
+  const cl_context_properties properties2[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)(platform_ids[1]), 0};
 
-  m_context = clCreateContextFromType(properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
 
+  gpu_context = clCreateContextFromType(properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
+  cpu_context = clCreateContextFromType(properties2, CL_DEVICE_TYPE_CPU, NULL, NULL, &err);
+
+
+  // Setup GPU kernel
   size_t databytes;
-  err = clGetContextInfo(m_context, CL_CONTEXT_DEVICES, 0, NULL, &databytes);
+  err = clGetContextInfo(gpu_context, CL_CONTEXT_DEVICES, 0, NULL, &databytes);
 
   cl_device_id device_ids[6];
 
-  clGetContextInfo(m_context, CL_CONTEXT_DEVICES, databytes, device_ids, NULL);
+  clGetContextInfo(gpu_context, CL_CONTEXT_DEVICES, databytes, device_ids, NULL);
 
-  queue_gpu = clCreateCommandQueue(m_context, device_ids[0], 0, &err);
+  queue_gpu = clCreateCommandQueue(gpu_context, device_ids[0], 0, &err);
 
   const char* source[1] = { char_simulate_bird }; // array of pointers where each pointer points to a string
   cl_uint count = 1; // size of the source array
 
   // Create Program with all kernels
-  program = clCreateProgramWithSource(m_context, count, source, NULL, &err);
+  program_gpu = clCreateProgramWithSource(gpu_context, count, source, NULL, &err);
 
   // Build Program
-  err = clBuildProgram(program, NULL, 0, NULL, NULL, NULL);
+  err = clBuildProgram(program_gpu, NULL, 0, NULL, NULL, NULL);
 
   char compiler_output[4000]{}; // size must be larger than 'length' var
   size_t length;
-  clGetProgramBuildInfo(program, device_ids[0], CL_PROGRAM_BUILD_LOG, sizeof(compiler_output), compiler_output, &length);
-  printf("%s", compiler_output);
+  clGetProgramBuildInfo(program_gpu, device_ids[0], CL_PROGRAM_BUILD_LOG, sizeof(compiler_output), compiler_output, &length);
+  //printf("%s", compiler_output);
 
   // Create Kernels
-  simulate_bird_kernel = clCreateKernel(program, "simulate_bird", &err);
+  simulate_bird_kernel = clCreateKernel(program_gpu, "simulate_bird", &err);
 
   float delta_time = 0;
   // Setup Buffers
-  birds_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, birds_buffer_size, p_birds, &err);
-  bird_to_flock_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, bird_to_flock_buffer_size, p_bird_to_flock, &err);
-  flock_avgs_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, flock_avgs_buffer_size, p_flock_avgs, &err);
-  flock_ranges_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, flock_ranges_buffer_size, p_flock_ranges, &err);
-  time_input_buffer = clCreateBuffer(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, time_input_buffer_size, &delta_time, &err);
+  birds_buffer_gpu = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, birds_buffer_size, p_birds, &err);
+  bird_to_flock_buffer = clCreateBuffer(gpu_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, bird_to_flock_buffer_size, p_bird_to_flock, &err);
+  flock_avgs_buffer_gpu = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, flock_avgs_buffer_size, p_flock_avgs, &err);
+  flock_ranges_buffer_gpu = clCreateBuffer(gpu_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, flock_ranges_buffer_size, p_flock_ranges, &err);
+  time_input_buffer = clCreateBuffer(gpu_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, time_input_buffer_size, &delta_time, &err);
 
   // Set arguments
-  err = clSetKernelArg(simulate_bird_kernel, 0, sizeof(cl_mem), (void*)&birds_buffer);
+  err = clSetKernelArg(simulate_bird_kernel, 0, sizeof(cl_mem), (void*)&birds_buffer_gpu);
   err = clSetKernelArg(simulate_bird_kernel, 1, sizeof(cl_mem), (void*)&bird_to_flock_buffer);
-  err = clSetKernelArg(simulate_bird_kernel, 2, sizeof(cl_mem), (void*)&flock_avgs_buffer);
-  err = clSetKernelArg(simulate_bird_kernel, 3, sizeof(cl_mem), (void*)&flock_ranges_buffer);
+  err = clSetKernelArg(simulate_bird_kernel, 2, sizeof(cl_mem), (void*)&flock_avgs_buffer_gpu);
+  err = clSetKernelArg(simulate_bird_kernel, 3, sizeof(cl_mem), (void*)&flock_ranges_buffer_gpu);
   err = clSetKernelArg(simulate_bird_kernel, 4, sizeof(cl_mem), (void*)&time_input_buffer);
   
-  size_t work_dims[1]{ state.max_birds };
+  size_t gpu_work_dims[1]{ state.max_birds };
 
 
-  float time_of_last_fps_update = 0;
+
+
+  // Setup CPU kernel
+  err = clGetContextInfo(cpu_context, CL_CONTEXT_DEVICES, 0, NULL, &databytes);
+
+  clGetContextInfo(cpu_context, CL_CONTEXT_DEVICES, databytes, device_ids, NULL);
+
+  queue_cpu = clCreateCommandQueue(cpu_context, device_ids[0], 0, &err);
+
+  source[0] = { char_calc_flock_avgs }; // array of pointers where each pointer points to a string
+  count = 1; // size of the source array
+
+  // Create Program with all kernels
+  program_cpu = clCreateProgramWithSource(cpu_context, count, source, NULL, &err);
+
+  // Build Program
+  err = clBuildProgram(program_cpu, NULL, 0, NULL, NULL, NULL);
+
+  clGetProgramBuildInfo(program_cpu, device_ids[0], CL_PROGRAM_BUILD_LOG, sizeof(compiler_output), compiler_output, &length);
+  //printf("%s", compiler_output);
+
+  // Create Kernels
+  calc_flock_avgs_kernel = clCreateKernel(program_cpu, "calc_flock_avgs", &err);
+
+  // Setup Buffers
+  birds_buffer_cpu = clCreateBuffer(cpu_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, birds_buffer_size, p_birds, &err);
+  flock_avgs_buffer_cpu = clCreateBuffer(cpu_context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, flock_avgs_buffer_size, p_flock_avgs, &err);
+  flock_ranges_buffer_cpu = clCreateBuffer(cpu_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, flock_ranges_buffer_size, p_flock_ranges, &err);
+
+  // Set arguments
+  err = clSetKernelArg(calc_flock_avgs_kernel, 0, sizeof(cl_mem), (void*)&birds_buffer_cpu);
+  err = clSetKernelArg(calc_flock_avgs_kernel, 1, sizeof(cl_mem), (void*)&flock_avgs_buffer_cpu);
+  err = clSetKernelArg(calc_flock_avgs_kernel, 2, sizeof(cl_mem), (void*)&flock_ranges_buffer_cpu);
+
+  size_t cpu_work_dims[1]{ state.num_of_flocks };
+
+  bool sim_running = true;
+  int final_fps = 0;
+  int final_ticks = 0;
+  int final_flock_avgs_ticks = 0;
+
+  std::thread sim_thread([&]() {
+    float time_of_last_tick_update = 0;
+    int update_count = 0;
+    float last_tick_update_time = 0;
+
+    while (sim_running) {
+      float sim_time = (float)glfwGetTime();
+      delta_time = sim_time - last_tick_update_time;
+      if (delta_time < (1.0f / 31)) { // cap the update rate to 30/s
+        continue;
+      }
+      last_tick_update_time = sim_time;
+
+      err = clEnqueueWriteBuffer(queue_gpu, time_input_buffer, CL_TRUE, 0, time_input_buffer_size, &delta_time, 0, NULL, NULL);
+      err = clEnqueueWriteBuffer(queue_gpu, flock_avgs_buffer_gpu, CL_TRUE, 0, flock_avgs_buffer_size, p_flock_avgs, 0, NULL, NULL);
+
+      // Run the kernel
+      err = clEnqueueNDRangeKernel(queue_gpu, // command queue
+        simulate_bird_kernel, // kernel
+        1, // the number of dimensions used (1 to 3) (ex give 2 to work on a 2d matrix)
+        NULL, // useless param, always NULL
+        gpu_work_dims, // an array containing the size of each dimension for the entire kernel (for example m and n for a 2d matrix)
+        NULL, // an array containing the size of each dimension for a single work group (a kernel is separated into work groups). NULL means let OpenCL automatically decide
+        0, // event thing
+        NULL, // event thing
+        NULL // event thing
+      );
+      clFinish(queue_gpu);
+      err = clEnqueueReadBuffer(queue_gpu, birds_buffer_gpu, CL_TRUE, 0, birds_buffer_size, p_birds, 0, NULL, NULL);
+
+      update_count += 1;
+      if (sim_time - time_of_last_tick_update >= 1.0f) {
+        final_ticks = update_count;
+        update_count = 0;
+        time_of_last_tick_update = sim_time;
+      }
+    }
+  });
+
+  std::thread avgs_thread([&]() {
+    float time_of_last_tick_update = 0;
+    int update_count = 0;
+    float last_tick_update_time = 0;
+    float delta = 0;
+
+    while (sim_running) {
+      float ttime = (float)glfwGetTime();
+      delta = ttime - last_tick_update_time;
+      if (delta < (1.0f / 31)) { // cap the update rate to 30/s
+        continue;
+      }
+      last_tick_update_time = ttime;
+
+      err = clEnqueueWriteBuffer(queue_cpu, birds_buffer_cpu, CL_TRUE, 0, birds_buffer_size, p_birds, 0, NULL, NULL);
+
+      // Run the kernel
+      err = clEnqueueNDRangeKernel(queue_cpu, // command queue
+        calc_flock_avgs_kernel, // kernel
+        1, // the number of dimensions used (1 to 3) (ex give 2 to work on a 2d matrix)
+        NULL, // useless param, always NULL
+        cpu_work_dims, // an array containing the size of each dimension for the entire kernel (for example m and n for a 2d matrix)
+        NULL, // an array containing the size of each dimension for a single work group (a kernel is separated into work groups). NULL means let OpenCL automatically decide
+        0, // event thing
+        NULL, // event thing
+        NULL // event thing
+      );
+      clFinish(queue_cpu);
+
+      err = clEnqueueReadBuffer(queue_cpu, flock_avgs_buffer_cpu, CL_TRUE, 0, flock_avgs_buffer_size, p_flock_avgs, 0, NULL, NULL);
+
+      update_count += 1;
+      if (ttime - time_of_last_tick_update >= 1.0f) {
+        final_flock_avgs_ticks = update_count;
+        update_count = 0;
+        time_of_last_tick_update = ttime;
+      }
+    }
+    });
+
+  float time_of_last_title_update = 0;
+  float time_of_last_draw = 0;
   int update_count = 0;
   float last_sim_update_time = 0;
 
   while (!glfwWindowShouldClose(window)) {
-    float time = (float)glfwGetTime();
-    delta_time = time - last_sim_update_time;
-    if (delta_time < (1.0f / 1000)) { // cap the framerate to 1000/s
+    float draw_time = (float)glfwGetTime();
+    if (draw_time - time_of_last_draw < 1.0f / 31) {
       continue;
     }
-    last_sim_update_time = time;
-
-    err = clEnqueueWriteBuffer(queue_gpu, time_input_buffer, CL_TRUE, 0, time_input_buffer_size, &delta_time, 0, NULL, NULL);
-
-    // Run the kernel
-    err = clEnqueueNDRangeKernel(queue_gpu, // command queue
-      simulate_bird_kernel, // kernel
-      1, // the number of dimensions used (1 to 3) (ex give 2 to work on a 2d matrix)
-      NULL, // useless param, always NULL
-      work_dims, // an array containing the size of each dimension for the entire kernel (for example m and n for a 2d matrix)
-      NULL, // an array containing the size of each dimension for a single work group (a kernel is separated into work groups). NULL means let OpenCL automatically decide
-      0, // event thing
-      NULL, // event thing
-      NULL // event thing
-    );
-
-    err = clEnqueueReadBuffer(queue_gpu, birds_buffer, CL_TRUE, 0, birds_buffer_size, p_birds, 0, NULL, NULL);
+    time_of_last_draw = draw_time;
 
     mat4 view = mat4(1.0f);
-    view = glm::translate(view, vec3(0.0f, 0.0f, -150.0f));
+    view = glm::translate(view, vec3(0.0f, 0.0f, -200.0f));
     mat4 projection;
     projection = glm::perspective(glm::radians(45.0f), 1600.0f / 1000.0f, 0.1f, 1000.0f);
 
@@ -322,7 +432,9 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < state.num_of_flocks; ++i) {
       bird_shader.Set3fv("color", flock_colors[i]);
-      for (int j = state.flock_ranges[i * 2]; j < state.flock_ranges[i * 2 + 1]; ++j)
+      int start = state.flock_ranges[i * 2];
+      int end = state.flock_ranges[i * 2 + 1];
+      for (int j = start; j < end; ++j)
       {
         DrawBird(state.birds[j], bird_shader);
       }
@@ -331,25 +443,32 @@ int main(int argc, char* argv[])
 
     glfwPollEvents();
 
-
     update_count += 1;
-    if (time - time_of_last_fps_update >= 1.0f) {
+    if (draw_time - time_of_last_title_update >= 1.0f) {
+      final_fps = update_count;
       stringstream ss;
-      ss << window_title << " " << "Draws/s: " << update_count;
+      ss << "Bird Flock Simulation" << " Sim/s: " << final_ticks << " Avg/s: " << final_flock_avgs_ticks << " Draws/s: " << final_fps;
       glfwSetWindowTitle(window, ss.str().c_str());
       update_count = 0;
-      time_of_last_fps_update = time;
+      time_of_last_title_update = draw_time;
     }
   }
 
-  clReleaseMemObject(birds_buffer);
+  sim_running = false;
+  sim_thread.join();
+  avgs_thread.join();
+
+  clReleaseMemObject(birds_buffer_gpu);
+  clReleaseMemObject(birds_buffer_cpu);
   clReleaseMemObject(bird_to_flock_buffer);
-  clReleaseMemObject(flock_avgs_buffer);
-  clReleaseMemObject(flock_ranges_buffer);
+  clReleaseMemObject(flock_avgs_buffer_gpu);
+  clReleaseMemObject(flock_avgs_buffer_cpu);
+  clReleaseMemObject(flock_ranges_buffer_gpu);
+  clReleaseMemObject(flock_ranges_buffer_cpu);
   clReleaseMemObject(time_input_buffer);
   delete[] platform_ids;
-  clReleaseContext(m_context);
+  clReleaseContext(gpu_context);
   clReleaseKernel(simulate_bird_kernel);
-  clReleaseProgram(program);
+  clReleaseProgram(program_gpu);
   clReleaseCommandQueue(queue_gpu);
 }
